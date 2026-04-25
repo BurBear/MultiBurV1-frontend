@@ -1,7 +1,7 @@
 import React from 'react';
 import { apiFetch } from '../services/api';
 
-export default function Pizarra({ ordenes, area, recargar }) {
+export default function Pizarra({ ordenes, area, recargar, user }) {
   const [actionLoading, setActionLoading] = React.useState(false);
 
   const handleAction = async (ordenId, tipoProceso, accion) => {
@@ -87,7 +87,8 @@ export default function Pizarra({ ordenes, area, recargar }) {
           </button>
         )}
 
-        {proc.estado === 'TERMINADO' && (
+        {/* REABRIR: Exclusivo del Administrador */}
+        {proc.estado === 'TERMINADO' && user?.rol === 'ADMIN' && (
           <button onClick={() => handleReabrir(proc.orden_id, proc.tipo_proceso)} disabled={actionLoading} style={{ width: '100%', padding: '6px', fontSize: '0.8rem', background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)' }}>
             Reabrir
           </button>
