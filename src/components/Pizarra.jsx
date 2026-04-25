@@ -53,49 +53,79 @@ export default function Pizarra({ ordenes, area, recargar, user }) {
   const pausados = misProcesos.filter(p => p.estado === 'PAUSADO');
   const terminados = misProcesos.filter(p => p.estado === 'TERMINADO');
 
-  const ProcesoCard = ({ proc }) => (
-    <div className="card" style={{ marginBottom: '1rem', background: 'var(--bg-panel)', borderLeft: `4px solid ${proc.estado === 'EN_PROCESO' ? '#22c55e' : proc.estado === 'PAUSADO' ? '#eab308' : proc.estado === 'TERMINADO' ? '#64748b' : 'var(--border)'}` }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-        <h4 style={{ margin: 0 }}>Orden #{proc.orden_id}</h4>
-        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{proc.estado}</span>
-      </div>
-      <p style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{proc.orden_cliente}</p>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '12px' }}>{proc.orden_descripcion}</p>
-      
-      {/* Controles de Estado */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        {proc.estado === 'PENDIENTE' && (
-          <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'iniciar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem' }}>
-            ▶ Iniciar
-          </button>
-        )}
+  const ProcesoCard = ({ proc }) => {
+    // Lógica para validar si el proceso anterior ya terminó
+    const orden = ordenes.find(o => o.id === proc.orden_id);
+    let puedeIniciar = true;
+    let procesoAnterior = null;
+
+    if (orden && orden.procesos) {
+      const index = orden.procesos.findIndex(p => p.id === proc.id);
+      if (index > 0) {
+        procesoAnterior = orden.procesos[index - 1];
+        if (procesoAnterior.estado !== 'TERMINADO') {
+          puedeIniciar = false;
+        }
+      }
+    }
+
+    return (
+      <div className="card" style={{ marginBottom: '1rem', background: 'var(--bg-panel)', borderLeft: `4px solid ${proc.estado === 'EN_PROCESO' ? '#22c55e' : proc.estado === 'PAUSADO' ? '#eab308' : proc.estado === 'TERMINADO' ? '#64748b' : 'var(--border)'}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <h4 style={{ margin: 0 }}>Orden #{proc.orden_id}</h4>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{proc.estado}</span>
+        </div>
+        <p style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{proc.orden_cliente}</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '12px' }}>{proc.orden_descripcion}</p>
         
-        {proc.estado === 'EN_PROCESO' && (
-          <>
-            <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'pausar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem', background: '#eab308', color: '#000' }}>
-              ⏸ Pausar
+        {/* Controles de Estado */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {proc.estado === 'PENDIENTE' && (
+            <button 
+              onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'iniciar')} 
+              disabled={actionLoading || !puedeIniciar} 
+              style={{ 
+                flex: 1, 
+                padding: '6px', 
+                fontSize: '0.8rem', 
+                background: puedeIniciar ? 'var(--primary)' : 'var(--bg-dark)',
+                color: puedeIniciar ? 'white' : 'var(--text-muted)',
+                border: puedeIniciar ? 'none' : '1px solid var(--border)',
+                cursor: puedeIniciar ? 'pointer' : 'not-allowed'
+              }}
+              title={!puedeIniciar ? `Esperando a que termine ${procesoAnterior?.tipo_proceso}` : ''}
+            >
+              {puedeIniciar ? '▶ Iniciar' : `⏳ Esperando ${procesoAnterior?.tipo_proceso}`}
             </button>
-            <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'finalizar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem', background: '#22c55e' }}>
-              ✔ Finalizar
+          )}
+          
+          {proc.estado === 'EN_PROCESO' && (
+            <>
+              <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'pausar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem', background: '#eab308', color: '#000' }}>
+                ⏸ Pausar
+              </button>
+              <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'finalizar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem', background: '#22c55e' }}>
+                ✔ Finalizar
+              </button>
+            </>
+          )}
+
+          {proc.estado === 'PAUSADO' && (
+            <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'reanudar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem', background: '#3b82f6' }}>
+              ▶ Reanudar
             </button>
-          </>
-        )}
+          )}
 
-        {proc.estado === 'PAUSADO' && (
-          <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'reanudar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem', background: '#3b82f6' }}>
-            ▶ Reanudar
-          </button>
-        )}
-
-        {/* REABRIR: Exclusivo del Administrador */}
-        {proc.estado === 'TERMINADO' && user?.rol === 'ADMIN' && (
-          <button onClick={() => handleReabrir(proc.orden_id, proc.tipo_proceso)} disabled={actionLoading} style={{ width: '100%', padding: '6px', fontSize: '0.8rem', background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)' }}>
-            Reabrir
-          </button>
-        )}
+          {/* REABRIR: Exclusivo del Administrador */}
+          {proc.estado === 'TERMINADO' && user?.rol === 'ADMIN' && (
+            <button onClick={() => handleReabrir(proc.orden_id, proc.tipo_proceso)} disabled={actionLoading} style={{ width: '100%', padding: '6px', fontSize: '0.8rem', background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)' }}>
+              Reabrir
+            </button>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', paddingBottom: '1rem', alignItems: 'flex-start' }}>
