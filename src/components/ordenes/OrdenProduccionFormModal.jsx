@@ -25,6 +25,7 @@ export default function OrdenProduccionFormModal({
     cliente_id: defaults.cliente_id || '',
     orden_trabajo_id: defaults.orden_trabajo_id ?? null,
     tipo_origen: defaults.tipo_origen || 'SERVICIO',
+    codigo: '',
     descripcion: '',
     cantidad: 1,
     material_id: '',
@@ -59,6 +60,10 @@ export default function OrdenProduccionFormModal({
       setError('Selecciona un cliente.');
       return;
     }
+    if (!values.codigo.trim()) {
+      setError('El codigo es obligatorio.');
+      return;
+    }
     if (!values.descripcion.trim()) {
       setError('La descripcion es obligatoria.');
       return;
@@ -76,6 +81,7 @@ export default function OrdenProduccionFormModal({
       cliente_id: Number(values.cliente_id),
       orden_trabajo_id: values.orden_trabajo_id === '' ? null : values.orden_trabajo_id,
       tipo_origen: values.tipo_origen,
+      codigo: values.codigo.trim(),
       descripcion: values.descripcion.trim(),
       cantidad: Number(values.cantidad),
       tipo_servicio: values.tipo_servicio,
@@ -118,6 +124,13 @@ export default function OrdenProduccionFormModal({
           ))}
         </Select>
 
+        <Input
+          label="Codigo"
+          name="codigo"
+          value={values.codigo}
+          onChange={(event) => setValue('codigo', event.target.value)}
+          required
+        />
         <Input
           label="Descripcion"
           name="descripcion"

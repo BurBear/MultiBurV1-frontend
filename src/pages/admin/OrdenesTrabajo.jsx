@@ -51,7 +51,7 @@ export default function OrdenesTrabajo() {
 
   const fields = useMemo(() => [
     { name: 'cliente_id', label: 'Cliente', type: 'select', options: clienteOptions, placeholder: 'Selecciona cliente', required: true },
-    { name: 'codigo', label: 'Codigo' },
+    { name: 'codigo', label: 'Codigo', required: true },
     { name: 'nombre', label: 'Nombre', required: true },
     { name: 'descripcion', label: 'Descripcion', type: 'textarea' },
     { name: 'tiene_orden_compra', label: 'Tiene orden de compra', type: 'checkbox', defaultValue: false },
@@ -221,6 +221,7 @@ export default function OrdenesTrabajo() {
           onSubmit={handleCrearOrden}
           validate={(values) => {
             if (!values.cliente_id) return 'Selecciona un cliente.';
+            if (!values.codigo?.trim()) return 'El codigo es obligatorio.';
             if (!values.nombre?.trim()) return 'El nombre es obligatorio.';
             return '';
           }}
