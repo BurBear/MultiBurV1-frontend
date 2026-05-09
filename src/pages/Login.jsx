@@ -1,133 +1,126 @@
-import React, { useState, useContext } from 'react';
+import { useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import Select from '../components/ui/Select';
 
 export default function Login() {
   const { login } = useContext(AuthContext);
 
   const [isRegister, setIsRegister] = useState(false);
-
-  // Estados para Login y Registro
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
   const [rol, setRol] = useState('ADMIN');
-
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const validate = () => {
+    if (!email.trim() || !password.trim()) return 'Ingresa correo y contraseña.';
+    if (!email.includes('@')) return 'Ingresa un correo valido.';
+    if (password.length < 4) return 'La contraseña debe tener al menos 4 caracteres.';
+    if (isRegister && !nombre.trim()) return 'Ingresa el nombre del usuario de prueba.';
+    return '';
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setError('');
     setSuccess('');
 
-    if (isRegister) {
-      try {
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      if (isRegister) {
         await apiFetch('/auth/register', {
           method: 'POST',
-          body: { email, password, nombre, rol }
+          body: { email: email.trim(), password, nombre: nombre.trim(), rol },
         });
-        setSuccess('¡Usuario creado con éxito! Iniciando sesión...');
+        setSuccess('Usuario creado. Iniciando sesion...');
+      }
 
-        // Auto-login tras el registro
-        await login(email, password);
-      } catch (err) {
-        setError(err.message || 'Error al registrar usuario');
-        setIsSubmitting(false);
-      }
-    } else {
-      try {
-        await login(email, password);
-      } catch (err) {
-        setError(err.message || 'Error al iniciar sesión');
-        setIsSubmitting(false);
-      }
+      await login(email.trim(), password);
+    } catch (err) {
+      setError(err.message || (isRegister ? 'Error al registrar usuario' : 'Error al iniciar sesion'));
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '20px' }}>
-      <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-        <h2 className="title" style={{ marginBottom: '0.5rem', fontSize: '2rem' }}>MultiBur</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-          Sistema de Control de Producción
-        </p>
+    <main className="login-screen">
+      <section className="login-panel fade-in">
+        <h1 className="title login-title">MultiBur</h1>
+        <p className="login-subtitle">Sistema de Control de Produccion</p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+        {isRegister && <div className="alert alert-warning">Registro solo para pruebas</div>}
+
+        <form className="form-stack" onSubmit={handleSubmit}>
           {isRegister && (
             <>
-              <div>
-                <input
-                  type="text"
-                  placeholder="Nombre completo"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <select
-                  value={rol}
-                  onChange={(e) => setRol(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-dark)', color: 'white', outline: 'none' }}
-                >
-                  <option value="ADMIN">ADMIN (Pre-prensa / Gerencia)</option>
-                  <option value="OPERADOR_IMPRESION">OPERADOR DE IMPRESIÓN</option>
-                  <option value="OPERADOR_ACABADOS">OPERADOR DE ACABADOS</option>
-                </select>
-              </div>
+              <Input
+                label="Nombre completo"
+                name="nombre"
+                type="text"
+                placeholder="Nombre completo"
+                value={nombre}
+                onChange={(event) => setNombre(event.target.value)}
+                required
+              />
+              <Select label="Rol" name="rol" value={rol} onChange={(event) => setRol(event.target.value)} required>
+                <option value="ADMIN">ADMIN (Pre-prensa / Gerencia)</option>
+                <option value="OPERADOR_IMPRESION">OPERADOR DE IMPRESION</option>
+                <option value="OPERADOR_ACABADOS">OPERADOR DE ACABADOS</option>
+              </Select>
             </>
           )}
 
-          <div>
-            <input
-              type="email"
-              placeholder="Correo electrónico"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <input
-              type="password"
-              placeholder="Contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          <Input
+            label="Correo electronico"
+            name="email"
+            type="email"
+            placeholder="correo@empresa.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+          <Input
+            label="Contraseña"
+            name="password"
+            type="password"
+            placeholder="Contraseña"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
 
-          {error && (
-            <div className="fade-in" style={{ color: '#f87171', fontSize: '0.9rem', padding: '10px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-              {error}
-            </div>
-          )}
+          {error && <div className="alert alert-danger">{error}</div>}
+          {success && <div className="alert alert-success">{success}</div>}
 
-          {success && (
-            <div className="fade-in" style={{ color: '#4ade80', fontSize: '0.9rem', padding: '10px', background: 'rgba(74, 222, 128, 0.1)', borderRadius: '8px', border: '1px solid rgba(74, 222, 128, 0.2)' }}>
-              {success}
-            </div>
-          )}
-
-          <button type="submit" disabled={isSubmitting} style={{ marginTop: '10px' }}>
-            {isSubmitting ? 'Procesando...' : (isRegister ? 'Registrar y Entrar' : 'Iniciar Sesión')}
-          </button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Procesando...' : isRegister ? 'Registrar y entrar' : 'Iniciar sesion'}
+          </Button>
         </form>
 
-        <div style={{ marginTop: '1.5rem', fontSize: '0.9rem' }}>
-          <button
-            type="button"
-            onClick={() => { setIsRegister(!isRegister); setError(''); setSuccess(''); }}
-            style={{ background: 'transparent', color: 'var(--text-muted)', border: 'none', textDecoration: 'underline', padding: 0 }}
-          >
-            {isRegister ? 'Ya tengo una cuenta. Iniciar Sesión' : 'Registrar usuario de prueba'}
-          </button>
-        </div>
-      </div>
-    </div>
+        <Button
+          variant="ghost"
+          className="login-dev-toggle"
+          onClick={() => {
+            setIsRegister(!isRegister);
+            setError('');
+            setSuccess('');
+          }}
+        >
+          {isRegister ? 'Volver al inicio de sesion' : 'Modo desarrollo: registrar prueba'}
+        </Button>
+      </section>
+    </main>
   );
 }

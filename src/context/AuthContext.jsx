@@ -1,4 +1,5 @@
-import React, { createContext, useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useEffect } from 'react';
 import { apiFetch } from '../services/api';
 
 export const AuthContext = createContext();
@@ -15,13 +16,21 @@ export const AuthProvider = ({ children }) => {
           const userData = await apiFetch("/auth/me");
           setUser(userData);
         } catch (error) {
-          console.error("Token inválido o expirado", error);
+          console.error("Token invalido o expirado", error);
           localStorage.removeItem("token");
         }
       }
       setLoading(false);
     };
+
+    const handleUnauthorized = () => {
+      setUser(null);
+      setLoading(false);
+    };
+
     checkAuth();
+    window.addEventListener("auth:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("auth:unauthorized", handleUnauthorized);
   }, []);
 
   const login = async (email, password) => {
@@ -31,12 +40,11 @@ export const AuthProvider = ({ children }) => {
 
     const data = await apiFetch("/auth/login/access-token", {
       method: "POST",
-      body: formData, // Importante: Form-Data para FastAPI OAuth2
+      body: formData,
     });
 
     localStorage.setItem("token", data.access_token);
-    
-    // Obtener info del usuario tras login
+
     const userData = await apiFetch("/auth/me");
     setUser(userData);
   };

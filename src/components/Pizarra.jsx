@@ -1,16 +1,28 @@
 import React from 'react';
 import { apiFetch } from '../services/api';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import Card from './ui/Card';
+import { getStatusTone } from '../utils/formatters';
+import { isAdmin } from '../utils/roles';
 
-export default function Pizarra({ ordenes, area, recargar, user }) {
+const columns = [
+  { id: 'PENDIENTE', label: 'Pendientes' },
+  { id: 'EN_PROCESO', label: 'En proceso' },
+  { id: 'PAUSADO', label: 'Pausados' },
+  { id: 'TERMINADO', label: 'Terminados' },
+];
+
+export default function Pizarra({ ordenes = [], area, recargar, user }) {
   const [actionLoading, setActionLoading] = React.useState(false);
 
   const handleAction = async (ordenId, tipoProceso, accion) => {
     setActionLoading(true);
     try {
       await apiFetch(`/ordenes/${ordenId}/procesos/${tipoProceso}/${accion}`, {
-        method: 'PUT'
+        method: 'PUT',
       });
-      recargar(); // Recargar datos padre
+      recargar();
     } catch (err) {
       alert(err.message || `Error al ${accion}`);
     } finally {
@@ -22,140 +34,140 @@ export default function Pizarra({ ordenes, area, recargar, user }) {
     setActionLoading(true);
     try {
       await apiFetch(`/ordenes/${ordenId}/procesos/${tipoProceso}/reabrir`, {
-        method: 'PUT'
+        method: 'PUT',
       });
       recargar();
     } catch (err) {
-      alert(err.message || "Error al reabrir proceso");
+      alert(err.message || 'Error al reabrir proceso');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Filtrar mis procesos
-  const misProcesos = [];
-  ordenes.forEach(orden => {
-    if (orden.estado !== "ANULADA") {
-      const procesoEnMiArea = orden.procesos.find(p => p.tipo_proceso === area);
-      if (procesoEnMiArea) {
-        misProcesos.push({
-          ...procesoEnMiArea,
-          orden_cliente: orden.cliente,
-          orden_id: orden.id,
-          orden_descripcion: orden.descripcion
-        });
-      }
-    }
+  const misProcesos = ordenes.flatMap((orden) => {
+    if (orden.estado === 'ANULADA') return [];
+    const procesoEnMiArea = orden.procesos?.find((proceso) => proceso.tipo_proceso === area);
+    if (!procesoEnMiArea) return [];
+
+    return {
+      ...procesoEnMiArea,
+      orden_cliente: orden.cliente,
+      orden_id: orden.id,
+      orden_descripcion: orden.descripcion,
+    };
   });
 
-  const pendientes = misProcesos.filter(p => p.estado === 'PENDIENTE');
-  const enProceso = misProcesos.filter(p => p.estado === 'EN_PROCESO');
-  const pausados = misProcesos.filter(p => p.estado === 'PAUSADO');
-  const terminados = misProcesos.filter(p => p.estado === 'TERMINADO');
+  const procesosPorEstado = columns.reduce((acc, column) => {
+    acc[column.id] = misProcesos.filter((proceso) => proceso.estado === column.id);
+    return acc;
+  }, {});
 
   const ProcesoCard = ({ proc }) => {
-    // Lógica para validar si el proceso anterior ya terminó
-    const orden = ordenes.find(o => o.id === proc.orden_id);
+    const orden = ordenes.find((item) => item.id === proc.orden_id);
     let puedeIniciar = true;
     let procesoAnterior = null;
 
-    if (orden && orden.procesos) {
-      const index = orden.procesos.findIndex(p => p.id === proc.id);
+    if (orden?.procesos) {
+      const index = orden.procesos.findIndex((proceso) => proceso.id === proc.id);
       if (index > 0) {
         procesoAnterior = orden.procesos[index - 1];
-        if (procesoAnterior.estado !== 'TERMINADO') {
-          puedeIniciar = false;
-        }
+        puedeIniciar = procesoAnterior.estado === 'TERMINADO';
       }
     }
 
     return (
-      <div className="card" style={{ marginBottom: '1rem', background: 'var(--bg-panel)', borderLeft: `4px solid ${proc.estado === 'EN_PROCESO' ? '#22c55e' : proc.estado === 'PAUSADO' ? '#eab308' : proc.estado === 'TERMINADO' ? '#64748b' : 'var(--border)'}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <h4 style={{ margin: 0 }}>Orden #{proc.orden_id}</h4>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{proc.estado}</span>
+      <Card className={`process-card process-${proc.estado.toLowerCase()}`}>
+        <div className="process-card-header">
+          <h4>Orden #{proc.orden_id}</h4>
+          <Badge tone={getStatusTone(proc.estado)}>{proc.estado}</Badge>
         </div>
-        <p style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{proc.orden_cliente}</p>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '12px' }}>{proc.orden_descripcion}</p>
-        
-        {/* Controles de Estado */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <p className="process-client">{proc.orden_cliente}</p>
+        <p className="process-description">{proc.orden_descripcion}</p>
+
+        <div className="process-actions">
           {proc.estado === 'PENDIENTE' && (
-            <button 
-              onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'iniciar')} 
-              disabled={actionLoading || !puedeIniciar} 
-              style={{ 
-                flex: 1, 
-                padding: '6px', 
-                fontSize: '0.8rem', 
-                background: puedeIniciar ? 'var(--primary)' : 'var(--bg-dark)',
-                color: puedeIniciar ? 'white' : 'var(--text-muted)',
-                border: puedeIniciar ? 'none' : '1px solid var(--border)',
-                cursor: puedeIniciar ? 'pointer' : 'not-allowed'
-              }}
+            <Button
+              size="sm"
+              onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'iniciar')}
+              disabled={actionLoading || !puedeIniciar}
               title={!puedeIniciar ? `Esperando a que termine ${procesoAnterior?.tipo_proceso}` : ''}
             >
-              {puedeIniciar ? '▶ Iniciar' : `⏳ Esperando ${procesoAnterior?.tipo_proceso}`}
-            </button>
+              {puedeIniciar ? 'Iniciar' : `Esperando ${procesoAnterior?.tipo_proceso}`}
+            </Button>
           )}
-          
+
           {proc.estado === 'EN_PROCESO' && (
             <>
-              <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'pausar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem', background: '#eab308', color: '#000' }}>
-                ⏸ Pausar
-              </button>
-              <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'finalizar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem', background: '#22c55e' }}>
-                ✔ Finalizar
-              </button>
+              <Button
+                variant="warning"
+                size="sm"
+                onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'pausar')}
+                disabled={actionLoading}
+              >
+                Pausar
+              </Button>
+              <Button
+                variant="success"
+                size="sm"
+                onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'finalizar')}
+                disabled={actionLoading}
+              >
+                Finalizar
+              </Button>
             </>
           )}
 
           {proc.estado === 'PAUSADO' && (
-            <button onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'reanudar')} disabled={actionLoading} style={{ flex: 1, padding: '6px', fontSize: '0.8rem', background: '#3b82f6' }}>
-              ▶ Reanudar
-            </button>
+            <Button
+              size="sm"
+              onClick={() => handleAction(proc.orden_id, proc.tipo_proceso, 'reanudar')}
+              disabled={actionLoading}
+            >
+              Reanudar
+            </Button>
           )}
 
-          {/* REABRIR: Exclusivo del Administrador */}
-          {proc.estado === 'TERMINADO' && user?.rol === 'ADMIN' && (
-            <button onClick={() => handleReabrir(proc.orden_id, proc.tipo_proceso)} disabled={actionLoading} style={{ width: '100%', padding: '6px', fontSize: '0.8rem', background: 'transparent', border: '1px dashed var(--accent)', color: 'var(--accent)' }}>
+          {proc.estado === 'TERMINADO' && isAdmin(user) && (
+            <Button
+              variant="danger-outline"
+              size="sm"
+              onClick={() => handleReabrir(proc.orden_id, proc.tipo_proceso)}
+              disabled={actionLoading}
+            >
               Reabrir
-            </button>
+            </Button>
           )}
         </div>
-      </div>
+      </Card>
     );
   };
 
+  if (misProcesos.length === 0) {
+    return (
+      <Card className="empty-state">
+        <h2>No hay procesos para {area}</h2>
+        <p>Cuando existan ordenes activas en esta estacion, apareceran en la pizarra.</p>
+      </Card>
+    );
+  }
+
   return (
-    <div style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', paddingBottom: '1rem', alignItems: 'flex-start' }}>
-      <div style={{ minWidth: '300px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem' }}>
-        <h3 style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-          PENDIENTES <span style={{ background: 'var(--border)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>{pendientes.length}</span>
-        </h3>
-        {pendientes.map(p => <ProcesoCard key={p.id} proc={p} />)}
-      </div>
-
-      <div style={{ minWidth: '300px', background: 'rgba(34, 197, 94, 0.05)', borderRadius: '12px', padding: '1rem', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-        <h3 style={{ fontSize: '1rem', color: '#22c55e', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-          EN PROCESO <span style={{ background: '#22c55e', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>{enProceso.length}</span>
-        </h3>
-        {enProceso.map(p => <ProcesoCard key={p.id} proc={p} />)}
-      </div>
-
-      <div style={{ minWidth: '300px', background: 'rgba(234, 179, 8, 0.05)', borderRadius: '12px', padding: '1rem', border: '1px solid rgba(234, 179, 8, 0.2)' }}>
-        <h3 style={{ fontSize: '1rem', color: '#eab308', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-          PAUSADOS <span style={{ background: '#eab308', color: '#000', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>{pausados.length}</span>
-        </h3>
-        {pausados.map(p => <ProcesoCard key={p.id} proc={p} />)}
-      </div>
-
-      <div style={{ minWidth: '300px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '1rem' }}>
-        <h3 style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-          TERMINADOS <span style={{ background: 'var(--border)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>{terminados.length}</span>
-        </h3>
-        {terminados.map(p => <ProcesoCard key={p.id} proc={p} />)}
-      </div>
+    <div className="kanban-board">
+      {columns.map((column) => (
+        <section key={column.id} className={`kanban-column column-${column.id.toLowerCase()}`}>
+          <header className="kanban-column-header">
+            <h3>{column.label}</h3>
+            <Badge tone={getStatusTone(column.id)}>{procesosPorEstado[column.id].length}</Badge>
+          </header>
+          <div className="kanban-list">
+            {procesosPorEstado[column.id].length === 0 ? (
+              <p className="column-empty">Sin procesos</p>
+            ) : (
+              procesosPorEstado[column.id].map((proceso) => <ProcesoCard key={proceso.id} proc={proceso} />)
+            )}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

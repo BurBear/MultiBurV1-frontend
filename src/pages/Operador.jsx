@@ -1,47 +1,78 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../services/api';
 import Pizarra from '../components/Pizarra';
+import PageHeader from '../components/layout/PageHeader';
+import Card from '../components/ui/Card';
+import { getRoleLabel, getStationFromRole } from '../utils/roles';
 
 export default function Operador({ user }) {
   const [ordenes, setOrdenes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Extraer el nombre del área desde el rol
-  const area = user.rol.replace('OPERADOR_', '');
+  const area = getStationFromRole(user.rol);
+  const procesosDisponibles = useMemo(() => {
+    return ordenes.some((orden) => orden.estado !== 'ANULADA' && orden.procesos?.some((proceso) => proceso.tipo_proceso === area));
+  }, [ordenes, area]);
 
   const cargarDatos = async () => {
+    setError('');
     try {
       const data = await apiFetch('/ordenes/');
-      setOrdenes(data);
+      setOrdenes(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err);
+      setError(err.message || 'Error al cargar la pizarra');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarDatos();
   }, []);
 
   return (
-    <div className="fade-in" style={{ display: 'grid', gap: '2rem' }}>
-      <header className="glass-panel" style={{ padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderLeft: '4px solid var(--accent)' }}>
-        <div>
-          <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Estación: {area}</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Pizarra operativa de planta</p>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Operador en turno</p>
-          <p style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{user.nombre}</p>
-        </div>
-      </header>
+    <div className="page-stack fade-in">
+      <PageHeader
+        title={`Estacion: ${area}`}
+        subtitle="Pizarra operativa de planta"
+        accent="accent"
+        meta={
+          <>
+            <span className="eyebrow">Operador en turno</span>
+            <strong>{user.nombre}</strong>
+          </>
+        }
+      />
+
+      <section className="operator-summary">
+        <Card className="stat-card">
+          <span>Operador</span>
+          <strong>{user.nombre}</strong>
+        </Card>
+        <Card className="stat-card">
+          <span>Rol</span>
+          <strong>{getRoleLabel(user.rol)}</strong>
+        </Card>
+        <Card className="stat-card">
+          <span>Estacion asignada</span>
+          <strong>{area}</strong>
+        </Card>
+      </section>
 
       {loading ? (
-        <p>Sincronizando pizarra con el servidor...</p>
+        <p className="muted">Sincronizando pizarra con el servidor...</p>
+      ) : error ? (
+        <div className="alert alert-danger">{error}</div>
+      ) : !procesosDisponibles ? (
+        <Card className="empty-state">
+          <h2>No hay procesos disponibles</h2>
+          <p>No existen ordenes activas para la estacion {area}.</p>
+        </Card>
       ) : (
-        <section style={{ minHeight: '60vh' }}>
-          <Pizarra ordenes={ordenes} area={area} recargar={cargarDatos} />
+        <section className="board-section">
+          <Pizarra ordenes={ordenes} area={area} recargar={cargarDatos} user={user} />
         </section>
       )}
     </div>
