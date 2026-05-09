@@ -31,7 +31,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -241,6 +242,40 @@ select {
   margin-bottom: 1.5rem;
 }
 
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.admin-layout {
+  align-items: start;
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.admin-sidebar {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.admin-sidebar .btn {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.admin-content {
+  min-width: 0;
+}
+
 .btn {
   align-items: center;
   border: 1px solid transparent;
@@ -335,9 +370,20 @@ select {
   border-color: var(--primary);
 }
 
+.textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
 .form-stack {
   display: grid;
   gap: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .form-actions {
@@ -376,6 +422,101 @@ select {
 .card {
   background: var(--bg-dark);
   padding: 1.25rem;
+}
+
+.summary-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  margin-top: 1rem;
+}
+
+.summary-card {
+  display: grid;
+  gap: 0.4rem;
+  min-height: 120px;
+}
+
+.summary-card span,
+.summary-card small,
+.detail-card span {
+  color: var(--text-muted);
+}
+
+.summary-card strong {
+  font-size: 2rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.crud-table {
+  border-collapse: collapse;
+  min-width: 760px;
+  width: 100%;
+}
+
+.crud-table th,
+.crud-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.85rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.crud-table th {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.crud-table td {
+  color: var(--text-main);
+  font-size: 0.92rem;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.table-actions .btn-danger-outline {
+  width: auto;
+}
+
+.compact {
+  min-height: 92px;
+}
+
+.compact-tabs {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 1.5rem;
+}
+
+.detail-card {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.subsection {
+  display: grid;
+  gap: 1rem;
+}
+
+.confirm-dialog {
+  display: grid;
+  gap: 1.25rem;
 }
 
 .orden-grid {
@@ -629,8 +770,18 @@ select {
   }
 
   .stats-grid,
-  .operator-summary {
+  .operator-summary,
+  .detail-grid,
+  .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: static;
   }
 
   .kanban-board {
@@ -650,14 +801,17 @@ select {
   }
 
   .navbar-actions,
-  .form-actions {
+  .form-actions,
+  .section-actions {
     align-items: stretch;
     flex-direction: column;
     width: 100%;
   }
 
   .stats-grid,
-  .operator-summary {
+  .operator-summary,
+  .detail-grid,
+  .form-grid {
     grid-template-columns: 1fr;
   }
 
