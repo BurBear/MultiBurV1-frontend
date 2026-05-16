@@ -37,7 +37,7 @@ function App() {
         onMenuClick={() => setAdminMenuOpen(true)}
       />
 
-      <main className="app-shell">
+      <main className={`app-shell ${destination === 'ADMIN' ? 'app-shell-admin' : ''}`}>
         {showRoleWarning && (
           <div className="alert alert-warning">
             Rol no reconocido: {user.rol}. Se muestra la vista operativa por defecto.

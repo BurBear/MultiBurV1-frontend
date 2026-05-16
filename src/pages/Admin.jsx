@@ -121,10 +121,10 @@ export default function Admin({ user, menuOpen, setMenuOpen }) {
   };
 
   return (
-    <div className="admin-workspace fade-in">
-      {menuOpen && <button className="admin-drawer-backdrop" type="button" aria-label="Cerrar menu" onClick={() => setMenuOpen(false)} />}
+    <div className="admin-shell fade-in">
+      {menuOpen && <button className="admin-sidebar-backdrop" type="button" aria-label="Cerrar menu" onClick={() => setMenuOpen(false)} />}
 
-      <aside className={`admin-drawer ${menuOpen ? 'admin-drawer-open' : ''}`} aria-hidden={!menuOpen}>
+      <aside className={`admin-sidebar ${menuOpen ? 'admin-sidebar-open' : ''}`}>
         <div className="admin-drawer-header">
           <div className="admin-drawer-brand">
             <span className="sidebar-mark">MB</span>
@@ -155,7 +155,7 @@ export default function Admin({ user, menuOpen, setMenuOpen }) {
                 aria-expanded={openGroups[group.id]}
               >
                 <span>{group.label}</span>
-                <span className={`admin-menu-chevron ${openGroups[group.id] ? 'admin-menu-chevron-open' : ''}`}>›</span>
+                <span className={`admin-menu-chevron ${openGroups[group.id] ? 'admin-menu-chevron-open' : ''}`} aria-hidden="true" />
               </button>
 
               {openGroups[group.id] && (

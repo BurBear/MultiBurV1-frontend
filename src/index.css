@@ -89,6 +89,11 @@ textarea {
   padding: 2rem;
 }
 
+.app-shell-admin {
+  max-width: none;
+  padding: 0;
+}
+
 .navbar {
   align-items: center;
   background: var(--bg-panel);
@@ -273,37 +278,21 @@ textarea {
   justify-content: flex-end;
 }
 
-.admin-workspace {
+.admin-shell {
   align-items: start;
   display: grid;
-  gap: 1.25rem;
   grid-template-columns: 280px minmax(0, 1fr);
+  min-height: calc(100vh - 73px);
 }
 
 .admin-main {
   display: grid;
   gap: 1.25rem;
   min-width: 0;
+  padding: 2rem;
 }
 
-.admin-topbar {
-  align-items: center;
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-  padding: 0.65rem 0.75rem;
-}
-
-.admin-hamburger {
-  font-size: 1.2rem;
-  min-width: 42px;
-  width: 42px;
-}
-
-.admin-drawer-backdrop {
+.admin-sidebar-backdrop {
   background: rgba(2, 6, 23, 0.58);
   border: 0;
   bottom: 0;
@@ -316,22 +305,22 @@ textarea {
   z-index: 990;
 }
 
-.admin-drawer {
+.admin-sidebar {
   background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  border-right: 1px solid var(--border);
   display: grid;
   grid-template-rows: auto 1fr;
+  height: calc(100vh - 73px);
   max-width: 100%;
-  padding: 1rem 0.85rem;
+  overflow-y: auto;
+  padding: 1rem;
   position: sticky;
-  top: 1rem;
+  top: 73px;
   width: 100%;
   z-index: 1;
 }
 
-.admin-drawer-open {
+.admin-sidebar-open {
   transform: translateX(0);
 }
 
@@ -421,10 +410,21 @@ textarea {
 
 .admin-menu-chevron {
   display: inline-flex;
-  font-size: 13px;
-  line-height: 1;
+  height: 12px;
+  justify-content: center;
+  position: relative;
   transform: rotate(0deg);
   transition: transform 0.18s ease;
+  width: 12px;
+}
+
+.admin-menu-chevron::before {
+  border-right: 1.5px solid currentColor;
+  border-top: 1.5px solid currentColor;
+  content: "";
+  height: 6px;
+  transform: rotate(45deg);
+  width: 6px;
 }
 
 .admin-menu-chevron-open {
@@ -987,28 +987,34 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .admin-workspace {
+  .app-shell-admin {
+    padding: 0;
+  }
+
+  .admin-shell {
     display: block;
+    min-height: auto;
   }
 
   .navbar-menu-button {
     display: inline-flex;
   }
 
-  .admin-drawer-backdrop {
+  .admin-sidebar-backdrop {
     display: block;
   }
 
-  .admin-drawer {
+  .admin-sidebar {
     background: #0b111c;
     border: 0;
     border-right: 1px solid var(--border);
-    border-radius: 0;
     bottom: 0;
     box-shadow: 24px 0 50px rgba(0, 0, 0, 0.32);
+    height: auto;
     left: 0;
     max-width: calc(100vw - 32px);
     position: fixed;
+    padding: 1rem 0.85rem;
     top: 0;
     transform: translateX(-105%);
     transition: transform 0.2s ease;
@@ -1016,7 +1022,7 @@ textarea {
     z-index: 1000;
   }
 
-  .admin-drawer-open {
+  .admin-sidebar-open {
     transform: translateX(0);
   }
 
@@ -1032,6 +1038,10 @@ textarea {
 @media (max-width: 560px) {
   .app-shell {
     padding: 1rem;
+  }
+
+  .app-shell-admin {
+    padding: 0;
   }
 
   .login-panel,
