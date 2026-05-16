@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { AuthContext } from './context/AuthContext';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
@@ -8,6 +8,7 @@ import { getRoleDestination, isKnownRole } from './utils/roles';
 
 function App() {
   const { user, loading, logout } = useContext(AuthContext);
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
 
   if (loading) {
     return (
@@ -29,7 +30,12 @@ function App() {
 
   return (
     <div>
-      <Navbar user={user} onLogout={logout} />
+      <Navbar
+        user={user}
+        onLogout={logout}
+        showMenuButton={destination === 'ADMIN'}
+        onMenuClick={() => setAdminMenuOpen(true)}
+      />
 
       <main className="app-shell">
         {showRoleWarning && (
@@ -39,7 +45,7 @@ function App() {
         )}
 
         {destination === 'ADMIN' ? (
-          <Admin user={user} />
+          <Admin user={user} menuOpen={adminMenuOpen} setMenuOpen={setAdminMenuOpen} />
         ) : (
           <Operador user={user} />
         )}
