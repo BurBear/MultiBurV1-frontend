@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import PageHeader from '../../components/layout/PageHeader';
+import { useEffect, useState } from 'react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
+import Modal from '../../components/ui/Modal';
 import CrudTable from '../../components/crud/CrudTable';
-import CrudFormModal from '../../components/crud/CrudFormModal';
+import OrdenTrabajoFormModal from '../../components/ordenes/OrdenTrabajoFormModal';
 import OrdenProduccionFormModal from '../../components/ordenes/OrdenProduccionFormModal';
 import * as clientesService from '../../services/clientesService';
 import * as materialesService from '../../services/materialesService';
@@ -19,17 +19,6 @@ function asArray(data) {
   return [];
 }
 
-function optionLabel(item) {
-  return item.nombre || item.codigo || `ID ${item.id}`;
-}
-
-const estadoOptions = [
-  { value: 'PENDIENTE', label: 'PENDIENTE' },
-  { value: 'EN_PROCESO', label: 'EN PROCESO' },
-  { value: 'TERMINADO', label: 'TERMINADO' },
-  { value: 'ANULADA', label: 'ANULADA' },
-];
-
 export default function OrdenesTrabajo() {
   const [ordenes, setOrdenes] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -42,33 +31,8 @@ export default function OrdenesTrabajo() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showProduccionForm, setShowProduccionForm] = useState(false);
-
-  const clienteOptions = useMemo(() => clientes.map((cliente) => ({
-    value: cliente.id,
-    label: optionLabel(cliente),
-  })), [clientes]);
-
-  const fields = useMemo(() => [
-    { name: 'cliente_id', label: 'Cliente', type: 'select', options: clienteOptions, placeholder: 'Selecciona cliente', required: true },
-    { name: 'codigo', label: 'Codigo', required: true },
-    { name: 'nombre', label: 'Nombre', required: true },
-    { name: 'descripcion', label: 'Descripcion', type: 'textarea' },
-    { name: 'tiene_orden_compra', label: 'Tiene orden de compra', type: 'checkbox', defaultValue: false },
-    {
-      name: 'numero_orden_compra',
-      label: 'Numero orden de compra',
-      hidden: (values) => !values.tiene_orden_compra,
-    },
-    {
-      name: 'fecha_orden_compra',
-      label: 'Fecha orden de compra',
-      type: 'date',
-      hidden: (values) => !values.tiene_orden_compra,
-    },
-    { name: 'fecha_entrega_estimada', label: 'Fecha entrega estimada', type: 'date' },
-    { name: 'estado', label: 'Estado', type: 'select', options: estadoOptions, defaultValue: 'PENDIENTE' },
-  ], [clienteOptions]);
 
   const loadInitial = async () => {
     setLoading(true);
@@ -95,6 +59,7 @@ export default function OrdenesTrabajo() {
 
   const loadDetail = async (orden) => {
     setSelected(orden);
+    setShowDetailModal(true);
     setDetailLoading(true);
     setError('');
     try {
@@ -118,12 +83,7 @@ export default function OrdenesTrabajo() {
   }, []);
 
   const handleCrearOrden = async (payload) => {
-    const nextPayload = { ...payload, cliente_id: Number(payload.cliente_id) };
-    if (!nextPayload.tiene_orden_compra) {
-      nextPayload.numero_orden_compra = '';
-      nextPayload.fecha_orden_compra = null;
-    }
-    await ordenesTrabajoService.crearOrdenTrabajo(nextPayload);
+    await ordenesTrabajoService.crearOrdenTrabajo(payload);
     setShowForm(false);
     await loadInitial();
   };
@@ -139,6 +99,12 @@ export default function OrdenesTrabajo() {
     await loadDetail(selected);
   };
 
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setSelected(null);
+    setProducciones([]);
+  };
+
   const columns = [
     { key: 'codigo', label: 'Codigo' },
     { key: 'nombre', label: 'Nombre' },
@@ -149,8 +115,6 @@ export default function OrdenesTrabajo() {
 
   return (
     <div className="page-stack fade-in">
-      <PageHeader title="Ordenes de Trabajo" subtitle="Flujo completo Cliente -> OrdenTrabajo -> OrdenProduccion" />
-
       <section className="panel">
         <div className="section-heading">
           <div>
@@ -158,7 +122,16 @@ export default function OrdenesTrabajo() {
             <p>{ordenes.length} registros cargados</p>
           </div>
           <div className="section-actions">
-            <Button variant="outline" onClick={loadInitial} disabled={loading}>Reintentar</Button>
+            <Button
+              className="icon-button"
+              variant="outline"
+              onClick={loadInitial}
+              disabled={loading}
+              aria-label="Refrescar"
+              title="Refrescar"
+            >
+              ↻
+            </Button>
             <Button onClick={() => setShowForm(true)}>+ Nueva orden</Button>
           </div>
         </div>
@@ -172,15 +145,27 @@ export default function OrdenesTrabajo() {
         )}
       </section>
 
-      {selected && (
-        <section className="panel">
+      {showDetailModal && selected && (
+        <Modal
+          title={`Detalle: ${selected.nombre || selected.codigo || 'Orden de trabajo'}`}
+          onClose={closeDetailModal}
+          panelClassName="modal-panel-wide"
+        >
           <div className="section-heading">
             <div>
-              <h2>Detalle: {selected.nombre || selected.codigo}</h2>
               <p>Cliente #{selected.cliente_id} - {producciones.length} ordenes de produccion asociadas</p>
             </div>
             <div className="section-actions">
-              <Button variant="outline" onClick={() => loadDetail(selected)} disabled={detailLoading}>Reintentar detalle</Button>
+              <Button
+                className="icon-button"
+                variant="outline"
+                onClick={() => loadDetail(selected)}
+                disabled={detailLoading}
+                aria-label="Refrescar detalle"
+                title="Refrescar detalle"
+              >
+                ↻
+              </Button>
               <Button onClick={() => setShowProduccionForm(true)}>+ Agregar produccion</Button>
             </div>
           </div>
@@ -210,21 +195,14 @@ export default function OrdenesTrabajo() {
               </div>
             </>
           )}
-        </section>
+        </Modal>
       )}
 
       {showForm && (
-        <CrudFormModal
-          title="Nueva orden de trabajo"
-          fields={fields}
+        <OrdenTrabajoFormModal
+          clientes={clientes}
           onClose={() => setShowForm(false)}
           onSubmit={handleCrearOrden}
-          validate={(values) => {
-            if (!values.cliente_id) return 'Selecciona un cliente.';
-            if (!values.codigo?.trim()) return 'El codigo es obligatorio.';
-            if (!values.nombre?.trim()) return 'El nombre es obligatorio.';
-            return '';
-          }}
         />
       )}
 

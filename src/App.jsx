@@ -9,6 +9,7 @@ import { getRoleDestination, isKnownRole } from './utils/roles';
 function App() {
   const { user, loading, logout } = useContext(AuthContext);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [adminSectionTitle, setAdminSectionTitle] = useState('Dashboard');
 
   if (loading) {
     return (
@@ -35,6 +36,8 @@ function App() {
         onLogout={logout}
         showMenuButton={destination === 'ADMIN'}
         onMenuClick={() => setAdminMenuOpen(true)}
+        centerTitle={destination === 'ADMIN' ? adminSectionTitle : ''}
+        centerSubtitle={destination === 'ADMIN' ? 'Panel de Administracion' : ''}
       />
 
       <main className={`app-shell ${destination === 'ADMIN' ? 'app-shell-admin' : ''}`}>
@@ -45,7 +48,11 @@ function App() {
         )}
 
         {destination === 'ADMIN' ? (
-          <Admin user={user} menuOpen={adminMenuOpen} setMenuOpen={setAdminMenuOpen} />
+          <Admin
+            menuOpen={adminMenuOpen}
+            setMenuOpen={setAdminMenuOpen}
+            onSectionChange={setAdminSectionTitle}
+          />
         ) : (
           <Operador user={user} />
         )}

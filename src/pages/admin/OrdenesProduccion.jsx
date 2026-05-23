@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import PageHeader from '../../components/layout/PageHeader';
 import Button from '../../components/ui/Button';
 import CrudTable from '../../components/crud/CrudTable';
 import OrdenProduccionFormModal from '../../components/ordenes/OrdenProduccionFormModal';
@@ -92,8 +91,6 @@ export default function OrdenesProduccion() {
 
   return (
     <div className="page-stack fade-in">
-      <PageHeader title="Ordenes de Produccion" subtitle="Producciones internas y servicios directos" />
-
       <section className="panel">
         <div className="section-heading">
           <div>
@@ -101,7 +98,16 @@ export default function OrdenesProduccion() {
             <p>{filteredOrdenes.length} registros visibles</p>
           </div>
           <div className="section-actions">
-            <Button variant="outline" onClick={loadData} disabled={loading}>Reintentar</Button>
+            <Button
+              className="icon-button"
+              variant="outline"
+              onClick={loadData}
+              disabled={loading}
+              aria-label="Refrescar"
+              title="Refrescar"
+            >
+              ↻
+            </Button>
             <Button onClick={() => setShowForm(true)}>+ Servicio directo</Button>
           </div>
         </div>

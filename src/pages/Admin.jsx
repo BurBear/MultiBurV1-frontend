@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import PageHeader from '../components/layout/PageHeader';
 import Button from '../components/ui/Button';
 import Dashboard from './admin/Dashboard';
+import PizarraGlobal from './admin/PizarraGlobal';
 import Clientes from './admin/Clientes';
 import Materiales from './admin/Materiales';
 import Formatos from './admin/Formatos';
@@ -29,6 +29,15 @@ function MenuIcon({ name }) {
         <rect x="14" y="3" width="7" height="7" />
         <rect x="14" y="14" width="7" height="7" />
         <rect x="3" y="14" width="7" height="7" />
+      </>
+    ),
+    board: (
+      <>
+        <path d="M3 5h18" />
+        <path d="M3 12h18" />
+        <path d="M3 19h18" />
+        <path d="M8 5v14" />
+        <path d="M16 5v14" />
       </>
     ),
     clientes: (
@@ -83,6 +92,7 @@ function MenuIcon({ name }) {
 
 const sections = [
   { id: 'DASHBOARD', label: 'Dashboard', icon: 'dashboard', Component: Dashboard },
+  { id: 'PIZARRA_GLOBAL', label: 'Pizarra Global', icon: 'board', Component: PizarraGlobal },
   { id: 'CLIENTES', label: 'Clientes', icon: 'clientes', Component: Clientes },
   { id: 'MATERIALES', label: 'Materiales', icon: 'materiales', Component: Materiales },
   { id: 'FORMATOS', label: 'Formatos', icon: 'formatos', Component: Formatos },
@@ -92,12 +102,12 @@ const sections = [
 ];
 
 const menuGroups = [
-  { id: 'GENERAL', label: 'General', items: ['DASHBOARD'] },
+  { id: 'GENERAL', label: 'General', items: ['DASHBOARD', 'PIZARRA_GLOBAL'] },
   { id: 'CATALOGOS', label: 'Catalogos', items: ['CLIENTES', 'MATERIALES', 'FORMATOS', 'MAQUINAS'] },
   { id: 'ORDENES', label: 'Ordenes', items: ['ORDENES_TRABAJO', 'ORDENES_PRODUCCION'] },
 ];
 
-export default function Admin({ user, menuOpen, setMenuOpen }) {
+export default function Admin({ menuOpen, setMenuOpen, onSectionChange }) {
   const [activeSection, setActiveSection] = useState('DASHBOARD');
   const [openGroups, setOpenGroups] = useState({
     GENERAL: true,
@@ -170,6 +180,7 @@ export default function Admin({ user, menuOpen, setMenuOpen }) {
                         size="sm"
                         onClick={() => {
                           setActiveSection(section.id);
+                          onSectionChange?.(section.label);
                           setMenuOpen(false);
                         }}
                         aria-label={section.label}
@@ -189,17 +200,6 @@ export default function Admin({ user, menuOpen, setMenuOpen }) {
       </aside>
 
       <main className="admin-main">
-        <PageHeader
-          title="Panel de Administracion"
-          subtitle="Dashboard, catalogos y gestion de ordenes"
-          meta={
-            <>
-              <span className="eyebrow">Sesion activa como</span>
-              <strong>{user.nombre}</strong>
-            </>
-          }
-        />
-
         <section className="admin-content">
           <ActiveComponent />
         </section>

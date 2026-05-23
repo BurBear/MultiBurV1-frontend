@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import PageHeader from '../../components/layout/PageHeader';
 import Button from '../../components/ui/Button';
 import SummaryCard from '../../components/dashboard/SummaryCard';
 import * as clientesService from '../../services/clientesService';
@@ -76,16 +75,21 @@ export default function Dashboard() {
 
   return (
     <div className="page-stack fade-in">
-      <PageHeader title="Dashboard" subtitle="Resumen administrativo de catalogos y ordenes" />
-
       <section className="panel">
         <div className="section-heading">
           <div>
             <h2>Indicadores</h2>
             <p>{loading ? 'Cargando datos...' : 'Datos sincronizados con el backend'}</p>
           </div>
-          <Button variant="outline" onClick={loadDashboard} disabled={loading}>
-            Reintentar
+          <Button
+            className="icon-button"
+            variant="outline"
+            onClick={loadDashboard}
+            disabled={loading}
+            aria-label="Refrescar"
+            title="Refrescar"
+          >
+            ↻
           </Button>
         </div>
 

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import PageHeader from '../../components/layout/PageHeader';
 import Button from '../../components/ui/Button';
 import CrudTable from '../../components/crud/CrudTable';
 import CrudFormModal from '../../components/crud/CrudFormModal';
@@ -65,17 +64,22 @@ export default function CatalogCrudPage({ title, subtitle, columns, fields, serv
 
   return (
     <div className="page-stack fade-in">
-      <PageHeader title={title} subtitle={subtitle} />
-
       <section className="panel">
         <div className="section-heading">
           <div>
             <h2>{title}</h2>
-            <p>{rows.length} registros cargados</p>
+            <p>{subtitle} - {rows.length} registros cargados</p>
           </div>
           <div className="section-actions">
-            <Button variant="outline" onClick={loadRows} disabled={loading}>
-              Reintentar
+            <Button
+              className="icon-button"
+              variant="outline"
+              onClick={loadRows}
+              disabled={loading}
+              aria-label="Refrescar"
+              title="Refrescar"
+            >
+              ↻
             </Button>
             <Button onClick={() => setShowForm(true)}>+ Nuevo</Button>
           </div>

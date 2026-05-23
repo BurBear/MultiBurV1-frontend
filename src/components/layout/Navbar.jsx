@@ -1,6 +1,13 @@
 import Button from '../ui/Button';
 
-export default function Navbar({ user, onLogout, showMenuButton = false, onMenuClick }) {
+export default function Navbar({
+  user,
+  onLogout,
+  showMenuButton = false,
+  onMenuClick,
+  centerTitle = '',
+  centerSubtitle = '',
+}) {
   return (
     <nav className="navbar">
       <div className="navbar-brand-row">
@@ -23,6 +30,12 @@ export default function Navbar({ user, onLogout, showMenuButton = false, onMenuC
           <p className="navbar-subtitle">Control de produccion</p>
         </div>
       </div>
+      {centerTitle && (
+        <div className="navbar-center-context">
+          <span>{centerSubtitle}</span>
+          <strong>{centerTitle}</strong>
+        </div>
+      )}
       <div className="navbar-actions">
         <span className="connection-status">
           <span className="status-dot" aria-hidden="true" />
