@@ -8,6 +8,10 @@ export function isAdmin(user) {
   return user?.rol === ROLES.ADMIN;
 }
 
+export function isOperator(user) {
+  return [ROLES.OPERADOR_IMPRESION, ROLES.OPERADOR_ACABADOS].includes(user?.rol);
+}
+
 export function getRoleDestination(rol) {
   return rol === ROLES.ADMIN ? 'ADMIN' : 'OPERADOR';
 }

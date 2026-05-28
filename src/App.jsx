@@ -9,6 +9,7 @@ import { getRoleDestination, isKnownRole } from './utils/roles';
 function App() {
   const { user, loading, logout } = useContext(AuthContext);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [operatorMenuOpen, setOperatorMenuOpen] = useState(false);
   const [adminSectionTitle, setAdminSectionTitle] = useState('Dashboard');
 
   if (loading) {
@@ -28,33 +29,34 @@ function App() {
 
   const destination = getRoleDestination(user.rol);
   const showRoleWarning = !isKnownRole(user.rol);
+  const isAdminDestination = destination === 'ADMIN';
 
   return (
     <div>
       <Navbar
         user={user}
         onLogout={logout}
-        showMenuButton={destination === 'ADMIN'}
-        onMenuClick={() => setAdminMenuOpen(true)}
-        centerTitle={destination === 'ADMIN' ? adminSectionTitle : ''}
-        centerSubtitle={destination === 'ADMIN' ? 'Panel de Administracion' : ''}
+        showMenuButton
+        onMenuClick={() => (isAdminDestination ? setAdminMenuOpen(true) : setOperatorMenuOpen(true))}
+        centerTitle={isAdminDestination ? adminSectionTitle : 'Pizarra Operativa'}
+        centerSubtitle={isAdminDestination ? 'Panel de Administracion' : 'Menu de estados'}
       />
 
-      <main className={`app-shell ${destination === 'ADMIN' ? 'app-shell-admin' : ''}`}>
+      <main className={`app-shell ${isAdminDestination ? 'app-shell-admin' : ''}`}>
         {showRoleWarning && (
           <div className="alert alert-warning">
             Rol no reconocido: {user.rol}. Se muestra la vista operativa por defecto.
           </div>
         )}
 
-        {destination === 'ADMIN' ? (
+        {isAdminDestination ? (
           <Admin
             menuOpen={adminMenuOpen}
             setMenuOpen={setAdminMenuOpen}
             onSectionChange={setAdminSectionTitle}
           />
         ) : (
-          <Operador user={user} />
+          <Operador user={user} menuOpen={operatorMenuOpen} setMenuOpen={setOperatorMenuOpen} />
         )}
       </main>
     </div>

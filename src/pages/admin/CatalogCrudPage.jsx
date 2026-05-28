@@ -10,7 +10,7 @@ function asArray(data) {
   return [];
 }
 
-export default function CatalogCrudPage({ title, subtitle, columns, fields, service, validate }) {
+export default function CatalogCrudPage({ title, subtitle, columns, fields, service, validate, extraActions, notice }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -82,6 +82,7 @@ export default function CatalogCrudPage({ title, subtitle, columns, fields, serv
               ↻
             </Button>
             <Button onClick={() => setShowForm(true)}>+ Nuevo</Button>
+            {extraActions?.({ reload: loadRows, loading, setError })}
           </div>
         </div>
 
@@ -90,15 +91,18 @@ export default function CatalogCrudPage({ title, subtitle, columns, fields, serv
         ) : error ? (
           <div className="alert alert-danger">{error}</div>
         ) : (
-          <CrudTable
-            columns={columns}
-            rows={rows}
-            onEdit={(row) => {
-              setEditing(row);
-              setShowForm(true);
-            }}
-            onDeactivate={setConfirmRow}
-          />
+          <>
+            {notice && <div className="alert alert-success">{notice}</div>}
+            <CrudTable
+              columns={columns}
+              rows={rows}
+              onEdit={(row) => {
+                setEditing(row);
+                setShowForm(true);
+              }}
+              onDeactivate={setConfirmRow}
+            />
+          </>
         )}
       </section>
 
