@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from '../../components/ui/Button';
 import CrudTable from '../../components/crud/CrudTable';
 import OrdenProduccionFormModal from '../../components/ordenes/OrdenProduccionFormModal';
@@ -7,6 +7,8 @@ import * as materialesService from '../../services/materialesService';
 import * as formatosService from '../../services/formatosService';
 import * as maquinasService from '../../services/maquinasService';
 import * as ordenesProduccionService from '../../services/ordenesProduccionService';
+import { formatLocalDateTime } from '../../utils/datetime';
+import { formatOrderCode } from '../../utils/formatters';
 
 function asArray(data) {
   if (Array.isArray(data)) return data;
@@ -14,19 +16,12 @@ function asArray(data) {
   return [];
 }
 
-const filters = [
-  { id: 'TODAS', label: 'Todas' },
-  { id: 'SERVICIO', label: 'Servicio directo' },
-  { id: 'COMPLETO', label: 'Asociadas a Orden de Trabajo' },
-];
-
 export default function OrdenesProduccion() {
   const [ordenes, setOrdenes] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [materiales, setMateriales] = useState([]);
   const [formatos, setFormatos] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('TODAS');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -59,16 +54,6 @@ export default function OrdenesProduccion() {
     loadData();
   }, []);
 
-  const filteredOrdenes = useMemo(() => {
-    if (activeFilter === 'SERVICIO') {
-      return ordenes.filter((orden) => orden.tipo_origen === 'SERVICIO' || !orden.orden_trabajo_id);
-    }
-    if (activeFilter === 'COMPLETO') {
-      return ordenes.filter((orden) => orden.tipo_origen === 'COMPLETO' || orden.orden_trabajo_id);
-    }
-    return ordenes;
-  }, [ordenes, activeFilter]);
-
   const handleCrearServicio = async (payload) => {
     await ordenesProduccionService.crearOrdenProduccion({
       ...payload,
@@ -80,8 +65,9 @@ export default function OrdenesProduccion() {
   };
 
   const columns = [
-    { key: 'id', label: 'ID' },
+    { key: 'codigo', label: 'Codigo', render: (row) => formatOrderCode('OP', row.codigo, row.id) },
     { key: 'descripcion', label: 'Descripcion' },
+    { key: 'fecha_entrega_estimada', label: 'Entrega', render: (row) => formatLocalDateTime(row.fecha_entrega_estimada) },
     { key: 'cliente_id', label: 'Cliente', render: (row) => clientes.find((cliente) => cliente.id === row.cliente_id)?.nombre || row.cliente_id },
     { key: 'orden_trabajo_id', label: 'Orden trabajo' },
     { key: 'tipo_origen', label: 'Origen' },
@@ -95,7 +81,7 @@ export default function OrdenesProduccion() {
         <div className="section-heading">
           <div>
             <h2>Ordenes de produccion</h2>
-            <p>{filteredOrdenes.length} registros visibles</p>
+            <p>{ordenes.length} registros visibles</p>
           </div>
           <div className="section-actions">
             <Button
@@ -112,25 +98,12 @@ export default function OrdenesProduccion() {
           </div>
         </div>
 
-        <div className="tabs compact-tabs">
-          {filters.map((filter) => (
-            <Button
-              key={filter.id}
-              size="sm"
-              variant={activeFilter === filter.id ? 'primary' : 'outline'}
-              onClick={() => setActiveFilter(filter.id)}
-            >
-              {filter.label}
-            </Button>
-          ))}
-        </div>
-
         {loading ? (
           <p className="muted">Cargando...</p>
         ) : error ? (
           <div className="alert alert-danger">{error}</div>
         ) : (
-          <CrudTable columns={columns} rows={filteredOrdenes} />
+          <CrudTable columns={columns} rows={ordenes} />
         )}
       </section>
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { isValidElement, useMemo, useState } from 'react';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import { formatStatus, getStatusTone } from '../../utils/formatters';
@@ -8,6 +8,7 @@ const searchableColumnTypes = new Set(['string', 'number', 'boolean']);
 
 function renderValue(value) {
   if (value === null || value === undefined || value === '') return '-';
+  if (isValidElement(value)) return value;
   if (typeof value === 'boolean') return value ? 'Si' : 'No';
   return String(value);
 }
@@ -18,6 +19,7 @@ export default function CrudTable({ columns, rows, onEdit, onDeactivate, onView 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('TODOS');
   const hasStatusColumn = columns.some((column) => column.key === 'estado');
+  const hasActions = Boolean(onView || onEdit || onDeactivate);
 
   const filteredRows = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -28,7 +30,7 @@ export default function CrudTable({ columns, rows, onEdit, onDeactivate, onView 
       if (!normalizedSearch) return true;
 
       return columns.some((column) => {
-        const rawValue = column.render ? column.render(row) : row[column.key];
+        const rawValue = column.searchValue ? column.searchValue(row) : column.render ? column.render(row) : row[column.key];
         if (!searchableColumnTypes.has(typeof rawValue)) return false;
         return String(rawValue).toLowerCase().includes(normalizedSearch);
       });
@@ -122,7 +124,7 @@ export default function CrudTable({ columns, rows, onEdit, onDeactivate, onView 
                 {columns.map((column) => (
                   <th key={column.key}>{column.label}</th>
                 ))}
-                <th>Acciones</th>
+                {hasActions && <th>Acciones</th>}
               </tr>
             </thead>
             <tbody>
@@ -140,17 +142,19 @@ export default function CrudTable({ columns, rows, onEdit, onDeactivate, onView 
                       </td>
                     );
                   })}
-                  <td>
-                    <div className="table-actions">
-                      {onView && <Button size="sm" variant="outline" onClick={() => onView(row)}>Ver</Button>}
-                      {onEdit && <Button size="sm" variant="outline" onClick={() => onEdit(row)}>Editar</Button>}
-                      {onDeactivate && row.estado !== 'INACTIVO' && (
-                        <Button size="sm" variant="danger-outline" onClick={() => onDeactivate(row)}>
-                          Desactivar
-                        </Button>
-                      )}
-                    </div>
-                  </td>
+                  {hasActions && (
+                    <td>
+                      <div className="table-actions">
+                        {onView && <Button size="sm" variant="outline" onClick={() => onView(row)}>Ver</Button>}
+                        {onEdit && <Button size="sm" variant="outline" onClick={() => onEdit(row)}>Editar</Button>}
+                        {onDeactivate && row.estado !== 'INACTIVO' && (
+                          <Button size="sm" variant="danger-outline" onClick={() => onDeactivate(row)}>
+                            Desactivar
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

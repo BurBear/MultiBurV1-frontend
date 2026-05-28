@@ -3,19 +3,6 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
 
-function generarCodigoOrden() {
-  const now = new Date();
-  const stamp = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-    String(now.getHours()).padStart(2, '0'),
-    String(now.getMinutes()).padStart(2, '0'),
-    String(now.getSeconds()).padStart(2, '0'),
-  ].join('');
-  return `OT-${stamp}`;
-}
-
 function clienteLabel(cliente) {
   return [cliente.nombre, cliente.documento].filter(Boolean).join(' - ');
 }
@@ -23,7 +10,6 @@ function clienteLabel(cliente) {
 export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
   const [values, setValues] = useState({
     cliente_id: '',
-    codigo: generarCodigoOrden(),
     nombre: '',
     descripcion: '',
     tiene_orden_compra: false,
@@ -50,6 +36,16 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
     setValues((current) => ({ ...current, [name]: value }));
   };
 
+  const selectCliente = (cliente) => {
+    setValues((current) => ({
+      ...current,
+      cliente_id: cliente.id,
+      tiene_orden_compra: Boolean(cliente.requiere_orden_compra),
+      numero_orden_compra: cliente.requiere_orden_compra ? current.numero_orden_compra : '',
+      fecha_orden_compra: cliente.requiere_orden_compra ? current.fecha_orden_compra : '',
+    }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
@@ -65,7 +61,6 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
 
     const payload = {
       cliente_id: Number(values.cliente_id),
-      codigo: values.codigo,
       nombre: values.nombre.trim(),
       descripcion: values.descripcion.trim() || null,
       tiene_orden_compra: values.tiene_orden_compra,
@@ -110,10 +105,11 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
                   key={cliente.id}
                   type="button"
                   className={`client-picker-item ${Number(values.cliente_id) === cliente.id ? 'client-picker-item-active' : ''}`}
-                  onClick={() => setValue('cliente_id', cliente.id)}
+                  onClick={() => selectCliente(cliente)}
                 >
                   <strong>{cliente.nombre}</strong>
                   <span>{cliente.documento || 'Sin documento'}</span>
+                  {cliente.requiere_orden_compra && <small>Trabaja con OC</small>}
                 </button>
               ))}
               {clientesFiltrados.length === 0 && <p className="muted">No se encontraron clientes.</p>}
@@ -123,7 +119,7 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
           <section className="form-section">
             <h3>Datos de la orden</h3>
             <div className="form-grid">
-              <Input className="locked-input" label="Codigo automatico" name="codigo" value={values.codigo} disabled />
+              <Input className="locked-input" label="Codigo automatico" name="codigo" value="Automatico" disabled />
               <Input className="locked-input" label="Estado inicial" name="estado" value="PENDIENTE" disabled />
             </div>
             <Input
@@ -159,7 +155,7 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
               checked={values.tiene_orden_compra}
               onChange={(event) => setValue('tiene_orden_compra', event.target.checked)}
             />
-            Tiene orden de compra
+            Esta orden requiere OC
           </label>
 
           {values.tiene_orden_compra && (
@@ -182,8 +178,10 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
         </section>
 
         {selectedCliente && (
-          <div className="alert alert-success">
-            Cliente seleccionado: {selectedCliente.nombre}
+          <div className={selectedCliente.requiere_orden_compra ? 'alert alert-warning' : 'alert alert-success'}>
+            Cliente seleccionado: {selectedCliente.nombre}. {selectedCliente.requiere_orden_compra
+              ? 'Este cliente trabaja con OC; el numero puede quedar pendiente si aun no lo tienes.'
+              : 'Este cliente no requiere OC por defecto.'}
           </div>
         )}
         {error && <div className="alert alert-danger">{error}</div>}
