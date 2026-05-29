@@ -25,9 +25,12 @@ const columns = [
 ];
 
 function validate(values) {
-  if (!values.nombre?.trim()) return 'El nombre es obligatorio.';
-  if (Number(values.stock_minimo || 0) < 0) return 'El stock minimo no puede ser negativo.';
-  return '';
+  const errors = {};
+  if (!values.nombre?.trim()) errors.nombre = 'Ingresa el nombre del material.';
+  if (values.gramaje !== null && values.gramaje !== '' && Number(values.gramaje) < 0) errors.gramaje = 'El gramaje no puede ser negativo.';
+  if (!values.unidad_medida?.trim()) errors.unidad_medida = 'Ingresa la unidad de medida.';
+  if (Number(values.stock_minimo || 0) < 0) errors.stock_minimo = 'El stock minimo no puede ser negativo.';
+  return errors;
 }
 
 export default function Materiales() {

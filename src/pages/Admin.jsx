@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Button from '../components/ui/Button';
+import BrandLogo from '../components/brand/BrandLogo';
 import Dashboard from './admin/Dashboard';
 import PizarraGlobal from './admin/PizarraGlobal';
 import Clientes from './admin/Clientes';
@@ -9,6 +10,7 @@ import Maquinas from './admin/Maquinas';
 import OrdenesTrabajo from './admin/OrdenesTrabajo';
 import OrdenesProduccion from './admin/OrdenesProduccion';
 import Incidencias from './admin/Incidencias';
+import Reportes from './admin/Reportes';
 
 function MenuIcon({ name }) {
   const commonProps = {
@@ -93,6 +95,14 @@ function MenuIcon({ name }) {
         <path d="M12 17h.01" />
       </>
     ),
+    reportes: (
+      <>
+        <path d="M3 3v18h18" />
+        <path d="M7 15v3" />
+        <path d="M12 10v8" />
+        <path d="M17 6v12" />
+      </>
+    ),
   };
 
   return <svg {...commonProps}>{paths[name]}</svg>;
@@ -108,13 +118,14 @@ const sections = [
   { id: 'ORDENES_TRABAJO', label: 'Ordenes de Trabajo', icon: 'ordenTrabajo', Component: OrdenesTrabajo },
   { id: 'ORDENES_PRODUCCION', label: 'Ordenes de Produccion', icon: 'ordenProduccion', Component: OrdenesProduccion },
   { id: 'INCIDENCIAS', label: 'Incidencias', icon: 'incidencias', Component: Incidencias },
+  { id: 'REPORTES', label: 'Reportes', icon: 'reportes', Component: Reportes },
 ];
 
 const menuGroups = [
   { id: 'GENERAL', label: 'General', items: ['DASHBOARD', 'PIZARRA_GLOBAL'] },
   { id: 'CATALOGOS', label: 'Catalogos', items: ['CLIENTES', 'MATERIALES', 'FORMATOS', 'MAQUINAS'] },
   { id: 'ORDENES', label: 'Ordenes', items: ['ORDENES_TRABAJO', 'ORDENES_PRODUCCION'] },
-  { id: 'PRODUCCION', label: 'Produccion', items: ['INCIDENCIAS'] },
+  { id: 'PRODUCCION', label: 'Produccion', items: ['INCIDENCIAS', 'REPORTES'] },
 ];
 
 export default function Admin({ menuOpen, setMenuOpen, onSectionChange }) {
@@ -153,7 +164,7 @@ export default function Admin({ menuOpen, setMenuOpen, onSectionChange }) {
       <aside className={`admin-sidebar ${menuOpen ? 'admin-sidebar-open' : ''}`}>
         <div className="admin-drawer-header">
           <div className="admin-drawer-brand">
-            <span className="sidebar-mark">MB</span>
+            <BrandLogo className="brand-logo-sidebar" />
             <div>
               <strong>MultiBur</strong>
               <span>Administracion</span>

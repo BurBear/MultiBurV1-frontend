@@ -5,6 +5,12 @@ import Modal from '../ui/Modal';
 import Select from '../ui/Select';
 import SearchPickerModal from '../ui/SearchPickerModal';
 import {
+  hasErrors,
+  isBlank,
+  validateNonNegativeNumber,
+  validatePositiveNumber,
+} from '../../utils/validation';
+import {
   ACABADOS_ROUTE_OPTIONS,
   BASE_PROCESS_TYPES,
   PLASTIFICADO_MODE_OPTIONS,
@@ -137,6 +143,7 @@ export default function OrdenProduccionFormModal({
   const [picker, setPicker] = useState(null);
   const [routeModalOpen, setRouteModalOpen] = useState(false);
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
   const selectedCliente = clientes.find((cliente) => cliente.id === Number(values.cliente_id));
@@ -145,6 +152,7 @@ export default function OrdenProduccionFormModal({
 
   const setValue = (name, value) => {
     setValues((current) => ({ ...current, [name]: value }));
+    setErrors((current) => ({ ...current, [name]: '' }));
   };
 
   const toggleProceso = (proceso) => {
@@ -154,6 +162,7 @@ export default function OrdenProduccionFormModal({
         ? current.procesos_personalizados.filter((item) => item !== proceso)
         : [...current.procesos_personalizados, proceso],
     }));
+    setErrors((current) => ({ ...current, procesos_personalizados: '' }));
   };
 
   const toggleAcabado = (acabado) => {
@@ -171,6 +180,7 @@ export default function OrdenProduccionFormModal({
             : [...current.ruta_acabados, acabado]
         ),
     }));
+    setErrors((current) => ({ ...current, ruta_acabados: '' }));
   };
 
   const setPlastificadoMode = (value) => {
@@ -183,6 +193,7 @@ export default function OrdenProduccionFormModal({
       ruta[plastificadoIndex] = value;
       return { ...current, ruta_acabados: ruta };
     });
+    setErrors((current) => ({ ...current, ruta_acabados: '' }));
   };
 
   const moveAcabado = (index, direction) => {
@@ -198,29 +209,27 @@ export default function OrdenProduccionFormModal({
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    setErrors({});
 
-    if (!values.cliente_id) {
-      setError('Selecciona un cliente.');
-      return;
-    }
-    if (!values.descripcion.trim()) {
-      setError('La descripcion es obligatoria.');
-      return;
-    }
-    if (Number(values.cantidad) <= 0) {
-      setError('La cantidad debe ser mayor que cero.');
-      return;
-    }
-    if (!values.fecha_entrega_estimada) {
-      setError('La fecha y hora de entrega es obligatoria.');
-      return;
-    }
+    const nextErrors = {};
+    if (!values.cliente_id) nextErrors.cliente_id = 'Selecciona un cliente.';
+    if (isBlank(values.descripcion)) nextErrors.descripcion = 'Ingresa la descripcion del trabajo.';
+    validatePositiveNumber(nextErrors, values, 'cantidad', 'La cantidad debe ser mayor que cero.');
+    validateNonNegativeNumber(nextErrors, values, 'demasia', 'La demasia no puede ser negativa.');
+    if (isBlank(values.fecha_entrega_estimada)) nextErrors.fecha_entrega_estimada = 'Ingresa fecha y hora de entrega.';
+    if (!values.material_id) nextErrors.material_id = 'Selecciona un material.';
+    if (!values.formato_id) nextErrors.formato_id = 'Selecciona un formato.';
+    if (!values.maquina_id) nextErrors.maquina_id = 'Selecciona una maquina sugerida.';
+    if (!values.tipo_impresion) nextErrors.tipo_impresion = 'Selecciona el tipo de impresion.';
     if (values.tipo_servicio === 'PERSONALIZADO' && values.procesos_personalizados.length === 0) {
-      setError('Selecciona al menos un proceso personalizado.');
-      return;
+      nextErrors.procesos_personalizados = 'Selecciona al menos un proceso personalizado.';
     }
     if (requiereRutaAcabados && values.ruta_acabados.length === 0) {
-      setError('Define al menos un acabado para la ruta de acabados.');
+      nextErrors.ruta_acabados = 'Define al menos un acabado para la ruta de acabados.';
+    }
+
+    if (hasErrors(nextErrors)) {
+      setErrors(nextErrors);
       return;
     }
 
@@ -269,20 +278,21 @@ export default function OrdenProduccionFormModal({
         </>
       }
     >
-      <form className="form-stack" onSubmit={handleSubmit}>
+      <form className="form-stack" onSubmit={handleSubmit} noValidate>
         <div className="order-form-grid">
           <section className="form-section form-section-compact">
             <h3>Datos generales</h3>
 
             {lockCliente ? (
-              <Input className="locked-input" label="Cliente" value={selectedCliente ? optionLabel(selectedCliente) : values.cliente_id} disabled />
+              <Input className="locked-input" label="Cliente" value={selectedCliente ? optionLabel(selectedCliente) : values.cliente_id} error={errors.cliente_id} disabled />
             ) : (
-              <label className="field">
+              <label className={`field ${errors.cliente_id ? 'field-invalid' : ''}`.trim()}>
                 <span className="field-label">Cliente</span>
                 <button type="button" className="picker-trigger" onClick={() => setPicker('cliente')}>
                   <span>{selectedCliente ? optionLabel(selectedCliente) : 'Click para buscar cliente'}</span>
                   <strong>⌕</strong>
                 </button>
+                {errors.cliente_id && <span className="field-error">{errors.cliente_id}</span>}
               </label>
             )}
 
@@ -292,6 +302,7 @@ export default function OrdenProduccionFormModal({
               value={values.descripcion}
               onChange={(event) => setValue('descripcion', event.target.value)}
               placeholder="Ej: Tarjetas personales"
+              error={errors.descripcion}
               required
             />
             <Input
@@ -301,6 +312,7 @@ export default function OrdenProduccionFormModal({
               min="1"
               value={values.cantidad}
               onChange={(event) => setValue('cantidad', event.target.value)}
+              error={errors.cantidad}
               required
             />
             <Input
@@ -309,6 +321,7 @@ export default function OrdenProduccionFormModal({
               type="datetime-local"
               value={values.fecha_entrega_estimada}
               onChange={(event) => setValue('fecha_entrega_estimada', event.target.value)}
+              error={errors.fecha_entrega_estimada}
               required
             />
             <Input
@@ -319,26 +332,28 @@ export default function OrdenProduccionFormModal({
               value={values.demasia}
               onChange={(event) => setValue('demasia', event.target.value)}
               placeholder="Ej: 30"
+              error={errors.demasia}
             />
           </section>
 
           <section className="form-section">
             <h3>Ficha tecnica</h3>
 
-            <label className="field">
+            <label className={`field ${errors.material_id ? 'field-invalid' : ''}`.trim()}>
               <span className="field-label">Material</span>
               <button type="button" className="picker-trigger" onClick={() => setPicker('material')}>
                 <span>{selectedMaterial ? optionLabel(selectedMaterial) : 'Click para buscar material'}</span>
                 <strong>⌕</strong>
               </button>
+              {errors.material_id && <span className="field-error">{errors.material_id}</span>}
             </label>
 
             <div className="technical-select-grid">
-              <Select label="Formato" name="formato_id" value={values.formato_id} onChange={(event) => setValue('formato_id', event.target.value)}>
+              <Select label="Formato" name="formato_id" value={values.formato_id} onChange={(event) => setValue('formato_id', event.target.value)} error={errors.formato_id}>
                 <option value="">Selecciona formato</option>
                 {formatos.map((formato) => <option key={formato.id} value={formato.id}>{optionLabel(formato)}</option>)}
               </Select>
-              <Select label="Maquina sugerida" name="maquina_id" value={values.maquina_id} onChange={(event) => setValue('maquina_id', event.target.value)}>
+              <Select label="Maquina sugerida" name="maquina_id" value={values.maquina_id} onChange={(event) => setValue('maquina_id', event.target.value)} error={errors.maquina_id}>
                 <option value="">Sin maquina</option>
                 {maquinas.map((maquina) => <option key={maquina.id} value={maquina.id}>{optionLabel(maquina)}</option>)}
               </Select>
@@ -350,7 +365,7 @@ export default function OrdenProduccionFormModal({
                 <option value="1 COLOR">1 COLOR</option>
                 <option value="PERSONALIZADO">PERSONALIZADO</option>
               </Select>
-              <Select label="Tipo de impresion" name="tipo_impresion" value={values.tipo_impresion} onChange={(event) => setValue('tipo_impresion', event.target.value)}>
+              <Select label="Tipo de impresion" name="tipo_impresion" value={values.tipo_impresion} onChange={(event) => setValue('tipo_impresion', event.target.value)} error={errors.tipo_impresion}>
                 <option value="">Selecciona tipo</option>
                 <option value="TIRA">TIRA</option>
                 <option value="T/R">T/R</option>
@@ -368,6 +383,7 @@ export default function OrdenProduccionFormModal({
             {values.tipo_servicio === 'PERSONALIZADO' && (
               <fieldset className="checkbox-panel">
                 <legend>Ruta de procesos</legend>
+                {errors.procesos_personalizados && <span className="field-error">{errors.procesos_personalizados}</span>}
                 {BASE_PROCESS_TYPES.map((proceso) => (
                   <label key={proceso} className="checkbox-row">
                     <input
@@ -403,6 +419,7 @@ export default function OrdenProduccionFormModal({
                 >
                   {values.ruta_acabados.length ? 'Editar ruta' : 'Configurar ruta'}
                 </Button>
+                {errors.ruta_acabados && <span className="field-error">{errors.ruta_acabados}</span>}
               </div>
             )}
 

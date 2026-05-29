@@ -1,4 +1,5 @@
 import Button from '../ui/Button';
+import BrandLogo from '../brand/BrandLogo';
 
 export default function Navbar({
   user,
@@ -25,6 +26,7 @@ export default function Navbar({
             <span />
           </Button>
         )}
+        <BrandLogo className="brand-logo-navbar" />
         <div>
           <h2 className="title">MultiBur</h2>
           <p className="navbar-subtitle">Control de produccion</p>

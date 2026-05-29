@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
+import { hasErrors, isBlank } from '../../utils/validation';
 
 function clienteLabel(cliente) {
   return [cliente.nombre, cliente.documento].filter(Boolean).join(' - ');
@@ -20,6 +21,7 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
   });
   const [clienteSearch, setClienteSearch] = useState('');
   const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
   const clientesFiltrados = useMemo(() => {
@@ -34,6 +36,7 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
 
   const setValue = (name, value) => {
     setValues((current) => ({ ...current, [name]: value }));
+    setErrors((current) => ({ ...current, [name]: '' }));
   };
 
   const selectCliente = (cliente) => {
@@ -44,18 +47,22 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
       numero_orden_compra: cliente.requiere_orden_compra ? current.numero_orden_compra : '',
       fecha_orden_compra: cliente.requiere_orden_compra ? current.fecha_orden_compra : '',
     }));
+    setErrors((current) => ({ ...current, cliente_id: '' }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    setErrors({});
 
-    if (!values.cliente_id) {
-      setError('Selecciona un cliente.');
-      return;
-    }
-    if (!values.nombre.trim()) {
-      setError('El nombre de la orden es obligatorio.');
+    const nextErrors = {};
+    if (!values.cliente_id) nextErrors.cliente_id = 'Selecciona un cliente.';
+    if (isBlank(values.nombre)) nextErrors.nombre = 'Ingresa el nombre de la orden.';
+    if (isBlank(values.descripcion)) nextErrors.descripcion = 'Ingresa la descripcion de la orden.';
+    if (isBlank(values.fecha_entrega_estimada)) nextErrors.fecha_entrega_estimada = 'Ingresa la fecha de entrega estimada.';
+
+    if (hasErrors(nextErrors)) {
+      setErrors(nextErrors);
       return;
     }
 
@@ -81,11 +88,11 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
 
   return (
     <Modal title="Nueva orden de trabajo" onClose={onClose} panelClassName="modal-panel-wide">
-      <form className="form-stack" onSubmit={handleSubmit}>
+      <form className="form-stack" onSubmit={handleSubmit} noValidate>
         <div className="order-form-grid">
           <section className="form-section">
             <h3>Cliente</h3>
-            <label className="field">
+            <label className={`field ${errors.cliente_id ? 'field-invalid' : ''}`.trim()}>
               <span className="field-label">Buscar cliente</span>
               <div className="search-input-wrap">
                 <span aria-hidden="true">⌕</span>
@@ -97,6 +104,7 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
                   placeholder="Nombre o documento"
                 />
               </div>
+              {errors.cliente_id && <span className="field-error">{errors.cliente_id}</span>}
             </label>
 
             <div className="client-picker-list">
@@ -127,16 +135,18 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
               name="nombre"
               value={values.nombre}
               onChange={(event) => setValue('nombre', event.target.value)}
+              error={errors.nombre}
               required
             />
-            <label className="field">
+            <label className={`field ${errors.descripcion ? 'field-invalid' : ''}`.trim()}>
               <span className="field-label">Descripcion</span>
               <textarea
-                className="input textarea"
+                className={`input textarea ${errors.descripcion ? 'input-error' : ''}`.trim()}
                 value={values.descripcion}
                 onChange={(event) => setValue('descripcion', event.target.value)}
                 rows={3}
               />
+              {errors.descripcion && <span className="field-error">{errors.descripcion}</span>}
             </label>
             <Input
               label="Fecha entrega estimada"
@@ -144,6 +154,8 @@ export default function OrdenTrabajoFormModal({ clientes, onClose, onSubmit }) {
               type="date"
               value={values.fecha_entrega_estimada}
               onChange={(event) => setValue('fecha_entrega_estimada', event.target.value)}
+              error={errors.fecha_entrega_estimada}
+              required
             />
           </section>
         </div>
