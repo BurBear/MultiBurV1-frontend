@@ -50,6 +50,49 @@ function getProcesosByArea(procesos, area) {
   return asArray(procesos).filter((proceso) => getProcessArea(proceso) === area);
 }
 
+function getOperatorAreaRows(produccion, area) {
+  if (produccion.estado === 'ANULADA') return [];
+
+  const procesos = asArray(produccion.procesos);
+  const areaProcesos = procesos
+    .map((proceso, procesoIndex) => ({ proceso, procesoIndex }))
+    .filter(({ proceso }) => getProcessArea(proceso) === area);
+
+  if (areaProcesos.length === 0) return [];
+
+  const currentAreaProceso = areaProcesos.find(({ proceso }) => isActiveProcess(proceso));
+  const nextAreaProceso = areaProcesos.find(({ proceso }) => proceso.estado !== 'TERMINADO');
+  const selected = currentAreaProceso || nextAreaProceso || areaProcesos[areaProcesos.length - 1];
+  const procesoAnterior = selected.procesoIndex > 0 ? procesos[selected.procesoIndex - 1] : null;
+  const puedeIniciar = !procesoAnterior || procesoAnterior.estado === 'TERMINADO';
+
+  return [{
+    id: `${produccion.id}-${selected.proceso.id}`,
+    produccion,
+    proceso: selected.proceso,
+    procesos,
+    procesoAnterior,
+    puedeIniciar,
+    progress: getProgress(procesos),
+  }];
+}
+
+function buildRowForProcess({ produccion, procesos, proceso }) {
+  const procesoIndex = procesos.findIndex((item) => item.id === proceso.id);
+  const procesoAnterior = procesoIndex > 0 ? procesos[procesoIndex - 1] : null;
+  const puedeIniciar = !procesoAnterior || procesoAnterior.estado === 'TERMINADO';
+
+  return {
+    id: `${produccion.id}-${proceso.id}`,
+    produccion,
+    proceso,
+    procesos,
+    procesoAnterior,
+    puedeIniciar,
+    progress: getProgress(procesos),
+  };
+}
+
 function getImpresionProceso(procesos) {
   return asArray(procesos).find((proceso) => getProcessArea(proceso) === 'IMPRESION') || null;
 }
@@ -163,28 +206,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
   }), [catalogs]);
 
   const operatorRows = React.useMemo(() => {
-    const baseRows = ordenes.flatMap((produccion) => {
-      if (produccion.estado === 'ANULADA') return [];
-
-      const procesos = asArray(produccion.procesos);
-      return procesos
-        .filter((proceso) => getProcessArea(proceso) === area)
-        .map((proceso) => {
-          const procesoIndex = procesos.findIndex((item) => item.id === proceso.id);
-          const procesoAnterior = procesoIndex > 0 ? procesos[procesoIndex - 1] : null;
-          const puedeIniciar = !procesoAnterior || procesoAnterior.estado === 'TERMINADO';
-
-          return {
-            id: `${produccion.id}-${proceso.id}`,
-            produccion,
-            proceso,
-            procesos,
-            procesoAnterior,
-            puedeIniciar,
-            progress: getProgress(procesos),
-          };
-        });
-    });
+    const baseRows = ordenes.flatMap((produccion) => getOperatorAreaRows(produccion, area));
 
     const trabajosActuales = baseRows.filter((row) => (
       isActiveProcess(row.proceso) && sameId(row.proceso.operador_id, user?.id)
@@ -238,6 +260,29 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
         const procesos = current.procesos.map((proceso) => (
           proceso.id === procesoActualizado.id ? procesoActualizado : proceso
         ));
+
+        if (accion === 'finalizar') {
+          const procesoIndex = procesos.findIndex((proceso) => proceso.id === procesoActualizado.id);
+          const areaProceso = getProcessArea(procesoActualizado);
+          const siguienteProceso = procesos
+            .slice(procesoIndex + 1)
+            .find((proceso) => (
+              getProcessArea(proceso) === areaProceso
+              && proceso.estado !== 'TERMINADO'
+            ));
+
+          if (!siguienteProceso) return null;
+
+          return {
+            ...buildRowForProcess({
+              produccion: current.produccion,
+              procesos,
+              proceso: siguienteProceso,
+            }),
+            previewOnly: current.previewOnly,
+          };
+        }
+
         return {
           ...current,
           proceso: procesoActualizado,
@@ -246,9 +291,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
         };
       });
       await recargar({ silent: true });
-      if (accion === 'finalizar') {
-        setSelectedRow(null);
-      } else if (['iniciar', 'reanudar'].includes(accion)) {
+      if (['iniciar', 'reanudar', 'finalizar'].includes(accion)) {
         setCierreCantidades({ cantidad_buena: '', cantidad_mala: '' });
         setCierreErrors(emptyCierreErrors());
       }

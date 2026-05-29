@@ -37,9 +37,10 @@ const columns = [
 ];
 
 function validate(values) {
-  if (!values.nombre?.trim()) return 'El nombre es obligatorio.';
-  if (values.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.correo)) return 'El correo no tiene formato valido.';
-  return '';
+  const errors = {};
+  if (!values.nombre?.trim()) errors.nombre = 'Ingresa el nombre del cliente.';
+  if (values.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.correo)) errors.correo = 'Ingresa un correo valido.';
+  return errors;
 }
 
 export default function Clientes() {

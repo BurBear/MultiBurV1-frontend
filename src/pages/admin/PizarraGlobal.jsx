@@ -218,13 +218,23 @@ function getAdminProcesses(produccion) {
   return asArray(produccion.procesos).filter((proceso) => isAdminProcess(proceso.tipo_proceso));
 }
 
+function hasPendingAdminProcesses(produccion) {
+  return getAdminProcesses(produccion).some((proceso) => proceso.estado !== 'TERMINADO');
+}
+
 function canStartProcess(procesos, proceso) {
   const index = procesos.findIndex((item) => item.id === proceso.id);
   if (index <= 0) return true;
   return procesos[index - 1]?.estado === 'TERMINADO';
 }
 
-function ProductionMiniRow({ produccion, catalogs, fallbackCliente, incidencias = [], onOpenAdminControl }) {
+function ProductionMiniRow({
+  produccion,
+  catalogs,
+  fallbackCliente,
+  incidencias = [],
+  onOpenAdminControl,
+}) {
   const material = catalogs.materiales[produccion.material_id]?.nombre || '-';
   const formato = catalogs.formatos[produccion.formato_id]?.nombre || '-';
   const cliente = catalogs.clientes[produccion.cliente_id]?.nombre || fallbackCliente || `Cliente #${produccion.cliente_id}`;
@@ -234,7 +244,9 @@ function ProductionMiniRow({ produccion, catalogs, fallbackCliente, incidencias 
   const estadoProduccion = getProductionStatusFromProcesses(procesos, produccion.estado);
   const procesoActual = getCurrentProcess(procesos);
   const abiertas = getOpenIncidencias(incidencias);
-  const hasAdminProcesses = getAdminProcesses(produccion).length > 0;
+  const adminProcesses = getAdminProcesses(produccion);
+  const hasAdminProcesses = adminProcesses.length > 0;
+  const adminControlPending = adminProcesses.some((proceso) => proceso.estado !== 'TERMINADO');
 
   return (
     <div className={`production-board-row ${abiertas.length ? 'production-board-row-alert' : ''}`}>
@@ -289,7 +301,7 @@ function ProductionMiniRow({ produccion, catalogs, fallbackCliente, incidencias 
         <span>Admin</span>
         {hasAdminProcesses ? (
           <Button size="sm" variant="outline" onClick={() => onOpenAdminControl?.(produccion, fallbackCliente)}>
-            Control
+            {adminControlPending ? 'Control' : 'Ver'}
           </Button>
         ) : (
           <small>-</small>
@@ -496,10 +508,11 @@ export default function PizarraGlobal() {
     const maquina = catalogs.maquinas[produccion.maquina_id]?.nombre || 'Sin maquina';
     const procesos = asArray(produccion.procesos);
     const procesosAdmin = procesos.filter((proceso) => isAdminProcess(proceso.tipo_proceso));
+    const adminControlPending = hasPendingAdminProcesses(produccion);
 
     return (
       <Modal
-        title="Control administrativo"
+        title={adminControlPending ? 'Control administrativo' : 'Detalle administrativo'}
         onClose={() => setControlTarget(null)}
         panelClassName="modal-panel-wide admin-process-modal"
         headerMeta={<Badge tone={getStatusTone(produccion.estado)}>{formatStatus(produccion.estado)}</Badge>}

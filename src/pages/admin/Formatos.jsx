@@ -24,10 +24,12 @@ const columns = [
 ];
 
 function validate(values) {
-  if (!values.nombre?.trim()) return 'El nombre es obligatorio.';
-  if (Number(values.ancho) <= 0) return 'El ancho debe ser mayor que cero.';
-  if (Number(values.alto) <= 0) return 'El alto debe ser mayor que cero.';
-  return '';
+  const errors = {};
+  if (!values.nombre?.trim()) errors.nombre = 'Ingresa el nombre del formato.';
+  if (Number(values.ancho) <= 0) errors.ancho = 'El ancho debe ser mayor que cero.';
+  if (Number(values.alto) <= 0) errors.alto = 'El alto debe ser mayor que cero.';
+  if (!values.unidad_medida?.trim()) errors.unidad_medida = 'Ingresa la unidad de medida.';
+  return errors;
 }
 
 export default function Formatos() {

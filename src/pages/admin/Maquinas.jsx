@@ -20,8 +20,10 @@ const columns = [
 ];
 
 function validate(values) {
-  if (!values.nombre?.trim()) return 'El nombre es obligatorio.';
-  return '';
+  const errors = {};
+  if (!values.nombre?.trim()) errors.nombre = 'Ingresa el nombre de la maquina.';
+  if (!values.tipo_maquina?.trim()) errors.tipo_maquina = 'Ingresa el tipo de maquina.';
+  return errors;
 }
 
 export default function Maquinas() {
