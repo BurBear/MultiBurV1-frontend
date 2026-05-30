@@ -22,10 +22,10 @@ export default function Login() {
 
   const validate = () => {
     const errors = {};
-    if (isBlank(email)) errors.email = 'Ingresa el correo electronico.';
-    else if (!isValidEmail(email)) errors.email = 'Ingresa un correo valido.';
-    if (isBlank(password)) errors.password = 'Ingresa la contrasena.';
-    else if (password.length < 4) errors.password = 'La contrasena debe tener al menos 4 caracteres.';
+    if (isBlank(email)) errors.email = 'Ingresa el correo electrónico.';
+    else if (!isValidEmail(email)) errors.email = 'Ingresa un correo válido.';
+    if (isBlank(password)) errors.password = 'Ingresa la contraseña.';
+    else if (password.length < 4) errors.password = 'La contraseña debe tener al menos 4 caracteres.';
     if (isRegister && isBlank(nombre)) errors.nombre = 'Ingresa el nombre del usuario.';
     return errors;
   };
@@ -54,12 +54,12 @@ export default function Login() {
           method: 'POST',
           body: { email: email.trim(), password, nombre: nombre.trim(), rol },
         });
-        setSuccess('Usuario creado. Iniciando sesion...');
+        setSuccess('Usuario creado. Iniciando sesión...');
       }
 
       await login(email.trim(), password);
     } catch (err) {
-      setError(err.message || (isRegister ? 'Error al registrar usuario' : 'Error al iniciar sesion'));
+      setError(err.message || (isRegister ? 'Error al registrar usuario' : 'Error al iniciar sesión'));
       setIsSubmitting(false);
     }
   };
@@ -71,7 +71,7 @@ export default function Login() {
           <BrandLogo className="brand-logo-login" />
           <h1 className="title login-title">MultiBur</h1>
         </div>
-        <p className="login-subtitle">Sistema de Control de Produccion</p>
+        <p className="login-subtitle">Sistema de Control de Producción</p>
 
         {isRegister && <div className="alert alert-warning">Registro solo para pruebas</div>}
 
@@ -100,7 +100,7 @@ export default function Login() {
           )}
 
           <Input
-            label="Correo electronico"
+            label="Correo electrónico"
             name="email"
             type="email"
             placeholder="correo@empresa.com"
@@ -113,10 +113,10 @@ export default function Login() {
             required
           />
           <Input
-            label="Contrasena"
+            label="Contraseña"
             name="password"
             type="password"
-            placeholder="Contrasena"
+            placeholder="Contraseña"
             value={password}
             onChange={(event) => {
               setPassword(event.target.value);
@@ -130,7 +130,7 @@ export default function Login() {
           {success && <div className="alert alert-success">{success}</div>}
 
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Procesando...' : isRegister ? 'Registrar y entrar' : 'Iniciar sesion'}
+            {isSubmitting ? 'Procesando...' : isRegister ? 'Registrar y entrar' : 'Iniciar sesión'}
           </Button>
         </form>
 
@@ -144,7 +144,7 @@ export default function Login() {
             setSuccess('');
           }}
         >
-          {isRegister ? 'Volver al inicio de sesion' : 'Modo desarrollo: registrar prueba'}
+          {isRegister ? 'Volver al inicio de sesión' : 'Modo desarrollo: registrar prueba'}
         </Button>
       </section>
     </main>
