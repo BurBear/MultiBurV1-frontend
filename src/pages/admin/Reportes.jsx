@@ -10,6 +10,7 @@ import * as maquinasService from '../../services/maquinasService';
 import * as materialesService from '../../services/materialesService';
 import * as ordenesProduccionService from '../../services/ordenesProduccionService';
 import * as ordenesTrabajoService from '../../services/ordenesTrabajoService';
+import * as prediccionService from '../../services/prediccionService';
 import { formatLocalDateTime } from '../../utils/datetime';
 import { formatNumber, formatOrderCode, formatStatus, getStatusTone } from '../../utils/formatters';
 import { getProcessArea } from '../../utils/procesos';
@@ -112,6 +113,24 @@ function formatProcessQuantity(value) {
   return formatNumber(value);
 }
 
+function formatDuration(minutes) {
+  const total = Number(minutes || 0);
+  const hours = Math.floor(total / 60);
+  const rest = total % 60;
+  if (hours <= 0) return `${rest} min`;
+  if (rest === 0) return `${hours} h`;
+  return `${hours} h ${rest} min`;
+}
+
+function emptyTendencias() {
+  return {
+    procesos_frecuentes: [],
+    materiales_frecuentes: [],
+    promedio_duracion_por_proceso: [],
+    cantidad_registros: 0,
+  };
+}
+
 function getProcesoRol(proceso) {
   const area = getProcessArea(proceso);
   if (area === 'IMPRESION') return 'Operador';
@@ -120,7 +139,8 @@ function getProcesoRol(proceso) {
   return area || '-';
 }
 
-function getProcesoResponsable(proceso) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function getProcesoResponsable(proceso) {
   if (proceso.operador_nombre) return proceso.operador_nombre;
   if (proceso.usuario_nombre) return proceso.usuario_nombre;
   if (proceso.admin_nombre) return proceso.admin_nombre;
@@ -152,6 +172,88 @@ function SimpleReportTable({ columns, rows, emptyText = 'Sin datos para mostrar.
         </tbody>
       </table>
     </div>
+  );
+}
+
+function HistoricalTrendsSection({ tendencias, loading, error }) {
+  const procesos = asArray(tendencias.procesos_frecuentes).map((item) => ({
+    id: item.tipo_proceso,
+    proceso: item.tipo_proceso,
+    cantidad: item.cantidad,
+  }));
+  const materiales = asArray(tendencias.materiales_frecuentes).map((item) => ({
+    id: item.material_id || item.material,
+    material: item.material,
+    ordenes: item.cantidad_ordenes,
+    planificada: item.cantidad_planificada,
+  }));
+  const promedios = asArray(tendencias.promedio_duracion_por_proceso).map((item) => ({
+    id: item.tipo_proceso,
+    proceso: item.tipo_proceso,
+    promedio: item.promedio_minutos,
+    muestra: item.muestra_historica,
+  }));
+
+  return (
+    <section className="panel prediction-trends-panel">
+      <div className="section-heading">
+        <div>
+          <h2>Tendencias historicas de produccion</h2>
+          <p>Datos calculados desde procesos terminados para apoyar estimaciones futuras.</p>
+        </div>
+        <Badge tone={tendencias.cantidad_registros > 0 ? 'info' : 'neutral'}>
+          {loading ? 'Calculando' : `${formatNumber(tendencias.cantidad_registros)} registros`}
+        </Badge>
+      </div>
+
+      {error && <div className="alert alert-warning">{error}</div>}
+
+      {loading ? (
+        <p className="muted">Cargando tendencias historicas...</p>
+      ) : tendencias.cantidad_registros === 0 ? (
+        <div className="empty-state compact">
+          <strong>Sin datos historicos suficientes</strong>
+          <p>No hay procesos terminados con fechas validas para calcular tendencias.</p>
+        </div>
+      ) : (
+        <div className="prediction-trends-grid">
+          <div>
+            <h3>Procesos mas frecuentes</h3>
+            <SimpleReportTable
+              columns={[
+                { key: 'proceso', label: 'Proceso' },
+                { key: 'cantidad', label: 'Registros', render: (row) => formatNumber(row.cantidad) },
+              ]}
+              rows={procesos}
+            />
+          </div>
+
+          <div>
+            <h3>Materiales mas usados</h3>
+            <SimpleReportTable
+              columns={[
+                { key: 'material', label: 'Material' },
+                { key: 'ordenes', label: 'OP', render: (row) => formatNumber(row.ordenes) },
+                { key: 'planificada', label: 'Cantidad', render: (row) => formatNumber(row.planificada) },
+              ]}
+              rows={materiales}
+            />
+          </div>
+
+          <div>
+            <h3>Promedio por proceso</h3>
+            <SimpleReportTable
+              columns={[
+                { key: 'proceso', label: 'Proceso' },
+                { key: 'promedio', label: 'Promedio', render: (row) => formatDuration(row.promedio) },
+                { key: 'muestra', label: 'Muestra', render: (row) => formatNumber(row.muestra) },
+              ]}
+              rows={promedios}
+            />
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -447,6 +549,9 @@ export default function Reportes() {
   const [clienteFilter, setClienteFilter] = useState('TODOS');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [tendencias, setTendencias] = useState(emptyTendencias);
+  const [tendenciasLoading, setTendenciasLoading] = useState(false);
+  const [tendenciasError, setTendenciasError] = useState('');
 
   const loadReportes = async () => {
     setLoading(true);
@@ -490,6 +595,31 @@ export default function Reportes() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadReportes();
   }, []);
+
+  const loadTendencias = async () => {
+    setTendenciasLoading(true);
+    setTendenciasError('');
+    const params = {};
+    if (clienteFilter !== 'TODOS') params.cliente_id = clienteFilter;
+    if (fromDate) params.fecha_desde = fromDate;
+    if (toDate) params.fecha_hasta = toDate;
+
+    try {
+      const result = await prediccionService.obtenerTendenciasProduccion(params);
+      setTendencias(result || emptyTendencias());
+    } catch (err) {
+      setTendencias(emptyTendencias());
+      setTendenciasError(err.message || 'No se pudieron cargar las tendencias historicas.');
+    } finally {
+      setTendenciasLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadTendencias();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clienteFilter, fromDate, toDate]);
 
   const selectedCliente = data.clientes.find((cliente) => sameId(cliente.id, clienteFilter));
   const clienteNombre = clienteFilter === 'TODOS' ? 'Todos los clientes' : selectedCliente?.nombre || `Cliente #${clienteFilter}`;
@@ -717,6 +847,11 @@ export default function Reportes() {
     document.title = previousTitle;
   };
 
+  const handleRefreshReportes = () => {
+    loadReportes();
+    loadTendencias();
+  };
+
   return (
     <div className="page-stack fade-in">
       <section className="panel">
@@ -735,7 +870,7 @@ export default function Reportes() {
           <Button
             className="icon-button"
             variant="outline"
-            onClick={loadReportes}
+            onClick={handleRefreshReportes}
             disabled={loading}
             aria-label="Refrescar"
             title="Refrescar"
@@ -775,6 +910,12 @@ export default function Reportes() {
           <SummaryCard label="OC pendientes" value={loading ? '-' : formatNumber(report.resumen.ocPendientes)} />
         </div>
       </section>
+
+      <HistoricalTrendsSection
+        tendencias={tendencias}
+        loading={tendenciasLoading}
+        error={tendenciasError}
+      />
 
       {report.isClientSelected ? (
         <>

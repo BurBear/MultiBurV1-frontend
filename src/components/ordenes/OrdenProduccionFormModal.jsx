@@ -18,9 +18,58 @@ import {
   isPlastificadoProcess,
   serviceIncludesAcabados,
 } from '../../utils/procesos';
+import { predecirOrdenProduccion } from '../../services/prediccionService';
 
 function optionLabel(item) {
   return item.nombre || item.codigo || `ID ${item.id}`;
+}
+
+function formatDuration(minutes) {
+  const total = Number(minutes || 0);
+  const hours = Math.floor(total / 60);
+  const rest = total % 60;
+  if (hours <= 0) return `${rest} min`;
+  if (rest === 0) return `${hours} h`;
+  return `${hours} h ${rest} min`;
+}
+
+function confidenceLabel(value) {
+  if (value === 'ALTA') return 'Confiabilidad alta';
+  if (value === 'MEDIA') return 'Confiabilidad media';
+  return 'Estimacion referencial';
+}
+
+function buildPredictionProcesses(values) {
+  const finishRoute = values.ruta_acabados.length ? values.ruta_acabados : ['ACABADOS'];
+  let base;
+
+  if (values.tipo_servicio === 'PERSONALIZADO') {
+    base = values.procesos_personalizados.flatMap((proceso) => (
+      proceso === 'ACABADOS' ? finishRoute : proceso
+    ));
+  } else if (values.tipo_servicio === 'SOLO_IMPRESION') {
+    base = ['IMPRESION', ...finishRoute];
+  } else {
+    base = BASE_PROCESS_TYPES.flatMap((proceso) => (
+      proceso === 'ACABADOS' ? finishRoute : proceso
+    ));
+  }
+
+  return Array.from(new Set(base.filter(Boolean)));
+}
+
+function buildPredictionPayload(values) {
+  const payload = {
+    tipo_servicio: values.tipo_servicio,
+    cantidad: Number(values.cantidad),
+    demasia: values.demasia === '' ? 0 : Number(values.demasia),
+    procesos: buildPredictionProcesses(values),
+  };
+
+  if (values.material_id) payload.material_id = Number(values.material_id);
+  if (values.formato_id) payload.formato_id = Number(values.formato_id);
+  if (values.maquina_id) payload.maquina_id = Number(values.maquina_id);
+  return payload;
 }
 
 function AcabadosRouteModal({ rutaAcabados, onToggle, onMove, onClear, onClose, onPlastificadoModeChange }) {
@@ -145,6 +194,9 @@ export default function OrdenProduccionFormModal({
   const [error, setError] = useState('');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [prediction, setPrediction] = useState(null);
+  const [predictionLoading, setPredictionLoading] = useState(false);
+  const [predictionError, setPredictionError] = useState('');
 
   const selectedCliente = clientes.find((cliente) => cliente.id === Number(values.cliente_id));
   const selectedMaterial = materiales.find((material) => material.id === Number(values.material_id));
@@ -153,6 +205,7 @@ export default function OrdenProduccionFormModal({
   const setValue = (name, value) => {
     setValues((current) => ({ ...current, [name]: value }));
     setErrors((current) => ({ ...current, [name]: '' }));
+    setPredictionError('');
   };
 
   const toggleProceso = (proceso) => {
@@ -265,6 +318,41 @@ export default function OrdenProduccionFormModal({
       setSaving(false);
     }
   };
+
+  const handleEstimateTime = async () => {
+    setPredictionError('');
+    setPrediction(null);
+
+    const nextErrors = {};
+    validatePositiveNumber(nextErrors, values, 'cantidad', 'La cantidad debe ser mayor que cero.');
+    validateNonNegativeNumber(nextErrors, values, 'demasia', 'La demasia no puede ser negativa.');
+    if (values.tipo_servicio === 'PERSONALIZADO' && values.procesos_personalizados.length === 0) {
+      nextErrors.procesos_personalizados = 'Selecciona al menos un proceso personalizado.';
+    }
+    if (requiereRutaAcabados && values.ruta_acabados.length === 0) {
+      nextErrors.ruta_acabados = 'Define la ruta de acabados para estimar con mas precision.';
+    }
+
+    if (hasErrors(nextErrors)) {
+      setErrors((current) => ({ ...current, ...nextErrors }));
+      setPredictionError('Completa los datos tecnicos necesarios para estimar el tiempo.');
+      return;
+    }
+
+    setPredictionLoading(true);
+    try {
+      const result = await predecirOrdenProduccion(buildPredictionPayload(values));
+      setPrediction(result);
+    } catch (err) {
+      setPredictionError(err.message || 'No se pudo calcular la prediccion.');
+    } finally {
+      setPredictionLoading(false);
+    }
+  };
+
+  const historicalSamples = prediction
+    ? prediction.desglose.reduce((total, item) => total + Number(item.muestra_historica || 0), 0)
+    : 0;
 
   return (
     <Modal
@@ -433,6 +521,63 @@ export default function OrdenProduccionFormModal({
                 placeholder="Indicaciones de impresion"
               />
             </label>
+
+            <div className="prediction-panel">
+              <div className="prediction-panel-heading">
+                <div>
+                  <h3>Prediccion de tiempo</h3>
+                  <p>Estimacion referencial basada en procesos terminados.</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleEstimateTime}
+                  disabled={predictionLoading}
+                >
+                  {predictionLoading ? 'Estimando...' : 'Estimar tiempo'}
+                </Button>
+              </div>
+
+              {predictionError && <div className="alert alert-warning">{predictionError}</div>}
+
+              {prediction && (
+                <div className="prediction-result">
+                  <div className="prediction-summary">
+                    <div>
+                      <span>Tiempo estimado</span>
+                      <strong>{formatDuration(prediction.duracion_total_estimada_minutos)}</strong>
+                      <small>{prediction.duracion_total_estimada_minutos} min</small>
+                    </div>
+                    <div>
+                      <span>Confianza</span>
+                      <strong>{prediction.confianza_general}</strong>
+                      <small>{confidenceLabel(prediction.confianza_general)}</small>
+                    </div>
+                    <div>
+                      <span>Historico usado</span>
+                      <strong>{historicalSamples}</strong>
+                      <small>registros encontrados</small>
+                    </div>
+                  </div>
+
+                  {(prediction.confianza_general === 'BAJA' || historicalSamples === 0) && (
+                    <p className="prediction-reference-message">
+                      No hay suficientes datos historicos. Se muestra una estimacion base referencial.
+                    </p>
+                  )}
+
+                  <div className="prediction-breakdown">
+                    <span>Desglose</span>
+                    {prediction.desglose.map((item) => (
+                      <div key={item.tipo_proceso}>
+                        <strong>{item.tipo_proceso}</strong>
+                        <span>{formatDuration(item.duracion_estimada_minutos)} · {item.confianza} · {item.muestra_historica} historicos</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
         </div>
 

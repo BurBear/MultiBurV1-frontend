@@ -8,6 +8,7 @@ import * as materialesService from '../../services/materialesService';
 import * as maquinasService from '../../services/maquinasService';
 import * as ordenesTrabajoService from '../../services/ordenesTrabajoService';
 import * as ordenesProduccionService from '../../services/ordenesProduccionService';
+import * as prediccionService from '../../services/prediccionService';
 import { formatLocalDateTime } from '../../utils/datetime';
 import { formatNumber, formatOrderCode, formatStatus, getStatusTone } from '../../utils/formatters';
 import { getProcessArea } from '../../utils/procesos';
@@ -42,6 +43,15 @@ function getProduccionStatus(produccion) {
   return produccion.estado || 'PENDIENTE';
 }
 
+function formatDuration(minutes) {
+  const total = Number(minutes || 0);
+  const hours = Math.floor(total / 60);
+  const rest = total % 60;
+  if (hours <= 0) return `${rest} min`;
+  if (rest === 0) return `${hours} h`;
+  return `${hours} h ${rest} min`;
+}
+
 export default function Dashboard() {
   const [data, setData] = useState({
     clientes: [],
@@ -50,6 +60,12 @@ export default function Dashboard() {
     ordenesTrabajo: [],
     ordenesProduccion: [],
     incidencias: [],
+    tendencias: {
+      procesos_frecuentes: [],
+      materiales_frecuentes: [],
+      promedio_duracion_por_proceso: [],
+      cantidad_registros: 0,
+    },
   });
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState([]);
@@ -67,6 +83,7 @@ export default function Dashboard() {
       ['ordenesTrabajo', ordenesTrabajoService.listarOrdenesTrabajo()],
       ['ordenesProduccion', ordenesProduccionService.listarOrdenesProduccion()],
       ['incidencias', incidenciasService.listarIncidencias()],
+      ['tendencias', prediccionService.obtenerTendenciasProduccion()],
     ];
 
     const results = await Promise.allSettled(requests.map(([, request]) => request));
@@ -194,6 +211,16 @@ export default function Dashboard() {
       cargaPorArea: Object.values(cargaPorArea),
       proximasEntregasTrabajo,
       proximasEntregasProduccion,
+      tendenciaPredictiva: {
+        registros: Number(data.tendencias?.cantidad_registros || 0),
+        procesoTop: asArray(data.tendencias?.procesos_frecuentes)[0]?.tipo_proceso || '-',
+        promedioTop: asArray(data.tendencias?.promedio_duracion_por_proceso)[0]?.promedio_minutos || 0,
+        nivelDatos: Number(data.tendencias?.cantidad_registros || 0) >= 10
+          ? 'Historial alto'
+          : Number(data.tendencias?.cantidad_registros || 0) >= 4
+            ? 'Historial medio'
+            : 'Historial bajo',
+      },
     };
   }, [data]);
 
@@ -390,6 +417,27 @@ export default function Dashboard() {
                 </div>
               ))
             )}
+          </div>
+
+          <div className="dashboard-predictive-summary">
+            <h3>Resumen predictivo</h3>
+            <div className="dashboard-predictive-grid">
+              <div>
+                <span>Historico IA</span>
+                <strong>{formatNumber(dashboardData.tendenciaPredictiva.registros)}</strong>
+                <small>{dashboardData.tendenciaPredictiva.nivelDatos}</small>
+              </div>
+              <div>
+                <span>Proceso frecuente</span>
+                <strong>{dashboardData.tendenciaPredictiva.procesoTop}</strong>
+                <small>Procesos terminados</small>
+              </div>
+              <div>
+                <span>Promedio base</span>
+                <strong>{formatDuration(dashboardData.tendenciaPredictiva.promedioTop)}</strong>
+                <small>Primer proceso con muestra</small>
+              </div>
+            </div>
           </div>
         </section>
       </div>

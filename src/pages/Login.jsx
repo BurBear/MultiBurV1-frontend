@@ -7,6 +7,17 @@ import Select from '../components/ui/Select';
 import BrandLogo from '../components/brand/BrandLogo';
 import { hasErrors, isBlank, isValidEmail } from '../utils/validation';
 
+// eslint-disable-next-line react-refresh/only-export-components
+export function validateLoginFields({ email, password, nombre = '', isRegister = false }) {
+  const errors = {};
+  if (isBlank(email)) errors.email = 'Ingresa el correo electrónico.';
+  else if (!isValidEmail(email)) errors.email = 'Ingresa un correo válido.';
+  if (isBlank(password)) errors.password = 'Ingresa la contraseña.';
+  else if (password.length < 4) errors.password = 'La contraseña debe tener al menos 4 caracteres.';
+  if (isRegister && isBlank(nombre)) errors.nombre = 'Ingresa el nombre del usuario.';
+  return errors;
+}
+
 export default function Login() {
   const { login } = useContext(AuthContext);
 
@@ -21,13 +32,7 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validate = () => {
-    const errors = {};
-    if (isBlank(email)) errors.email = 'Ingresa el correo electrónico.';
-    else if (!isValidEmail(email)) errors.email = 'Ingresa un correo válido.';
-    if (isBlank(password)) errors.password = 'Ingresa la contraseña.';
-    else if (password.length < 4) errors.password = 'La contraseña debe tener al menos 4 caracteres.';
-    if (isRegister && isBlank(nombre)) errors.nombre = 'Ingresa el nombre del usuario.';
-    return errors;
+    return validateLoginFields({ email, password, nombre, isRegister });
   };
 
   const clearFieldError = (field) => {

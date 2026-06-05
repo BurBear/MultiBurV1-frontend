@@ -12,6 +12,7 @@ import * as materialesService from '../../services/materialesService';
 import * as formatosService from '../../services/formatosService';
 import * as maquinasService from '../../services/maquinasService';
 import * as ordenesProduccionService from '../../services/ordenesProduccionService';
+import * as ordenesTrabajoService from '../../services/ordenesTrabajoService';
 import { formatLocalDateTime } from '../../utils/datetime';
 import { formatOrderCode } from '../../utils/formatters';
 
@@ -35,6 +36,7 @@ export default function OrdenesProduccion() {
   const [materiales, setMateriales] = useState([]);
   const [formatos, setFormatos] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
+  const [ordenesTrabajo, setOrdenesTrabajo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -52,18 +54,20 @@ export default function OrdenesProduccion() {
     setLoading(true);
     setError('');
     try {
-      const [ordenesData, clientesData, materialesData, formatosData, maquinasData] = await Promise.all([
+      const [ordenesData, clientesData, materialesData, formatosData, maquinasData, ordenesTrabajoData] = await Promise.all([
         ordenesProduccionService.listarOrdenesProduccion(),
         clientesService.listar(),
         materialesService.listar(),
         formatosService.listar(),
         maquinasService.listar(),
+        ordenesTrabajoService.listarOrdenesTrabajo(),
       ]);
       setOrdenes(asArray(ordenesData));
       setClientes(asArray(clientesData));
       setMateriales(asArray(materialesData));
       setFormatos(asArray(formatosData));
       setMaquinas(asArray(maquinasData));
+      setOrdenesTrabajo(asArray(ordenesTrabajoData));
     } catch (err) {
       setError(err.message || 'No se pudieron cargar las ordenes de produccion.');
     } finally {
@@ -170,12 +174,23 @@ export default function OrdenesProduccion() {
     }
   };
 
+  const getOrdenTrabajoCodigo = (produccion) => {
+    if (!produccion.orden_trabajo_id) return '-';
+    const ordenTrabajo = ordenesTrabajo.find((orden) => String(orden.id) === String(produccion.orden_trabajo_id));
+    return ordenTrabajo?.codigo || produccion.orden_trabajo_codigo || `OT #${produccion.orden_trabajo_id}`;
+  };
+
   const columns = [
     { key: 'codigo', label: 'Codigo', render: (row) => formatOrderCode('OP', row.codigo, row.id) },
     { key: 'descripcion', label: 'Descripcion' },
     { key: 'fecha_entrega_estimada', label: 'Entrega', render: (row) => formatLocalDateTime(row.fecha_entrega_estimada) },
     { key: 'cliente_id', label: 'Cliente', render: (row) => clientes.find((cliente) => cliente.id === row.cliente_id)?.nombre || row.cliente_id },
-    { key: 'orden_trabajo_id', label: 'Orden trabajo' },
+    {
+      key: 'orden_trabajo_id',
+      label: 'Orden trabajo',
+      render: (row) => getOrdenTrabajoCodigo(row),
+      searchValue: (row) => getOrdenTrabajoCodigo(row),
+    },
     { key: 'tipo_origen', label: 'Origen' },
     { key: 'tipo_servicio', label: 'Servicio' },
     { key: 'estado', label: 'Estado' },
