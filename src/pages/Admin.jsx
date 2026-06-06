@@ -1,218 +1,235 @@
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../services/api';
-import Pizarra from '../components/Pizarra';
+import { useEffect, useMemo, useState } from 'react';
+import Button from '../components/ui/Button';
+import BrandLogo from '../components/brand/BrandLogo';
+import Dashboard from './admin/Dashboard';
+import PizarraGlobal from './admin/PizarraGlobal';
+import Clientes from './admin/Clientes';
+import Materiales from './admin/Materiales';
+import Formatos from './admin/Formatos';
+import Maquinas from './admin/Maquinas';
+import OrdenesTrabajo from './admin/OrdenesTrabajo';
+import OrdenesProduccion from './admin/OrdenesProduccion';
+import Incidencias from './admin/Incidencias';
+import Reportes from './admin/Reportes';
 
-export default function Admin({ user }) {
-  const [ordenes, setOrdenes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('ORDENES');
-  
-  // Estado para el modal de creación
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    cliente: '',
-    descripcion: '',
-    cantidad: 1,
-    tipo_servicio: 'COMPLETO',
-    procesos_personalizados: []
+function MenuIcon({ name }) {
+  const commonProps = {
+    width: '18',
+    height: '18',
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: '2',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': 'true',
+  };
+
+  const paths = {
+    dashboard: (
+      <>
+        <rect x="3" y="3" width="7" height="7" />
+        <rect x="14" y="3" width="7" height="7" />
+        <rect x="14" y="14" width="7" height="7" />
+        <rect x="3" y="14" width="7" height="7" />
+      </>
+    ),
+    board: (
+      <>
+        <path d="M3 5h18" />
+        <path d="M3 12h18" />
+        <path d="M3 19h18" />
+        <path d="M8 5v14" />
+        <path d="M16 5v14" />
+      </>
+    ),
+    clientes: (
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    ),
+    materiales: (
+      <>
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+        <path d="m3.3 7 8.7 5 8.7-5" />
+        <path d="M12 22V12" />
+      </>
+    ),
+    formatos: (
+      <>
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+        <path d="M8 7h8" />
+        <path d="M8 11h8" />
+        <path d="M8 15h5" />
+      </>
+    ),
+    maquinas: (
+      <>
+        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l1.3-1.3a7 7 0 0 1-9 9l-6 6-3-3 6-6a7 7 0 0 1 9-9l-1.3 1.3Z" />
+      </>
+    ),
+    ordenTrabajo: (
+      <>
+        <path d="M9 11h6" />
+        <path d="M9 15h6" />
+        <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" />
+        <path d="M14 3v5h5" />
+      </>
+    ),
+    ordenProduccion: (
+      <>
+        <path d="M4 7h16" />
+        <path d="M4 12h16" />
+        <path d="M4 17h16" />
+        <path d="M7 4v16" />
+        <path d="M17 4v16" />
+      </>
+    ),
+    incidencias: (
+      <>
+        <path d="M10.3 3.3 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.3a2 2 0 0 0-3.4 0Z" />
+        <path d="M12 9v4" />
+        <path d="M12 17h.01" />
+      </>
+    ),
+    reportes: (
+      <>
+        <path d="M3 3v18h18" />
+        <path d="M7 15v3" />
+        <path d="M12 10v8" />
+        <path d="M17 6v12" />
+      </>
+    ),
+  };
+
+  return <svg {...commonProps}>{paths[name]}</svg>;
+}
+
+const sections = [
+  { id: 'DASHBOARD', label: 'Dashboard', icon: 'dashboard', Component: Dashboard },
+  { id: 'PIZARRA_GLOBAL', label: 'Pizarra Global', icon: 'board', Component: PizarraGlobal },
+  { id: 'CLIENTES', label: 'Clientes', icon: 'clientes', Component: Clientes },
+  { id: 'MATERIALES', label: 'Materiales', icon: 'materiales', Component: Materiales },
+  { id: 'FORMATOS', label: 'Formatos', icon: 'formatos', Component: Formatos },
+  { id: 'MAQUINAS', label: 'Maquinas', icon: 'maquinas', Component: Maquinas },
+  { id: 'ORDENES_TRABAJO', label: 'Ordenes de Trabajo', icon: 'ordenTrabajo', Component: OrdenesTrabajo },
+  { id: 'ORDENES_PRODUCCION', label: 'Ordenes de Produccion', icon: 'ordenProduccion', Component: OrdenesProduccion },
+  { id: 'INCIDENCIAS', label: 'Incidencias', icon: 'incidencias', Component: Incidencias },
+  { id: 'REPORTES', label: 'Reportes', icon: 'reportes', Component: Reportes },
+];
+
+const menuGroups = [
+  { id: 'GENERAL', label: 'General', items: ['DASHBOARD', 'PIZARRA_GLOBAL'] },
+  { id: 'CATALOGOS', label: 'Catalogos', items: ['CLIENTES', 'MATERIALES', 'FORMATOS', 'MAQUINAS'] },
+  { id: 'ORDENES', label: 'Ordenes', items: ['ORDENES_TRABAJO', 'ORDENES_PRODUCCION'] },
+  { id: 'PRODUCCION', label: 'Produccion', items: ['INCIDENCIAS', 'REPORTES'] },
+];
+
+export default function Admin({ menuOpen, setMenuOpen, onSectionChange }) {
+  const [activeSection, setActiveSection] = useState('DASHBOARD');
+  const [openGroups, setOpenGroups] = useState({
+    GENERAL: true,
+    CATALOGOS: true,
+    ORDENES: true,
+    PRODUCCION: true,
   });
 
-  const cargarOrdenes = async () => {
-    try {
-      const data = await apiFetch('/ordenes/');
-      setOrdenes(data);
-    } catch (err) {
-      setError('Error al cargar las órdenes');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    cargarOrdenes();
+  const ActiveComponent = useMemo(
+    () => sections.find((section) => section.id === activeSection)?.Component || Dashboard,
+    [activeSection],
+  );
+  const sectionsById = useMemo(() => {
+    return sections.reduce((acc, section) => {
+      acc[section.id] = section;
+      return acc;
+    }, {});
   }, []);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  useEffect(() => {
+    const section = sections.find((item) => item.id === activeSection);
+    onSectionChange?.(section?.label || 'Dashboard');
+  }, [activeSection, onSectionChange]);
 
-  const handleCheckboxChange = (proceso) => {
-    const actuales = formData.procesos_personalizados;
-    if (actuales.includes(proceso)) {
-      setFormData({ ...formData, procesos_personalizados: actuales.filter(p => p !== proceso) });
-    } else {
-      setFormData({ ...formData, procesos_personalizados: [...actuales, proceso] });
-    }
-  };
-
-  const handleCrearOrden = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        cliente: formData.cliente,
-        descripcion: formData.descripcion,
-        cantidad: parseInt(formData.cantidad, 10),
-        tipo_servicio: formData.tipo_servicio,
-      };
-
-      if (formData.tipo_servicio === 'PERSONALIZADO') {
-        payload.procesos_personalizados = formData.procesos_personalizados;
-      }
-
-      await apiFetch('/ordenes/', {
-        method: 'POST',
-        body: payload
-      });
-      setShowModal(false);
-      setFormData({ cliente: '', descripcion: '', cantidad: 1, tipo_servicio: 'COMPLETO', procesos_personalizados: [] });
-      cargarOrdenes();
-    } catch (err) {
-      alert(err.message || "Error al crear la orden");
-    }
+  const toggleGroup = (groupId) => {
+    setOpenGroups((current) => ({ ...current, [groupId]: !current[groupId] }));
   };
 
   return (
-    <div className="fade-in" style={{ display: 'grid', gap: '2rem' }}>
-      <header className="glass-panel" style={{ padding: '1.5rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Panel de Administración</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Gestión global y control de Pre-prensa</p>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Sesión activa como</p>
-          <p style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{user.nombre}</p>
-        </div>
-      </header>
+    <div className="admin-shell fade-in">
+      {menuOpen && <button className="admin-sidebar-backdrop" type="button" aria-label="Cerrar menu" onClick={() => setMenuOpen(false)} />}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-        <button 
-          onClick={() => setActiveTab('ORDENES')} 
-          style={{ background: activeTab === 'ORDENES' ? 'var(--primary)' : 'transparent', color: activeTab === 'ORDENES' ? 'white' : 'var(--text-muted)', border: activeTab === 'ORDENES' ? 'none' : '1px solid var(--border)' }}
-        >
-          Vista Global
-        </button>
-        <button 
-          onClick={() => setActiveTab('DISEÑO')} 
-          style={{ background: activeTab === 'DISEÑO' ? 'var(--primary)' : 'transparent', color: activeTab === 'DISEÑO' ? 'white' : 'var(--text-muted)', border: activeTab === 'DISEÑO' ? 'none' : '1px solid var(--border)' }}
-        >
-          Estación: DISEÑO
-        </button>
-        <button 
-          onClick={() => setActiveTab('PLACAS')} 
-          style={{ background: activeTab === 'PLACAS' ? 'var(--primary)' : 'transparent', color: activeTab === 'PLACAS' ? 'white' : 'var(--text-muted)', border: activeTab === 'PLACAS' ? 'none' : '1px solid var(--border)' }}
-        >
-          Estación: PLACAS
-        </button>
-      </div>
+      <aside className={`admin-sidebar ${menuOpen ? 'admin-sidebar-open' : ''}`}>
+        <div className="admin-drawer-header">
+          <div className="admin-drawer-brand">
+            <BrandLogo className="brand-logo-sidebar" />
+            <div>
+              <strong>MultiBur</strong>
+              <span>Administracion</span>
+            </div>
+          </div>
+          <Button
+            className="sidebar-toggle"
+            variant="ghost"
+            size="sm"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Cerrar menu"
+            title="Cerrar menu"
+          >
+            x
+          </Button>
+        </div>
 
-      <section className="glass-panel">
-        {activeTab === 'ORDENES' ? (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2>Gestión de Órdenes</h2>
-              <button onClick={() => setShowModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '1.2rem' }}>+</span> Nueva Orden
+        <nav className="admin-menu" aria-label="Menu administrativo">
+          {menuGroups.map((group) => (
+            <div key={group.id} className="admin-menu-group">
+              <button
+                type="button"
+                className="admin-menu-group-toggle"
+                onClick={() => toggleGroup(group.id)}
+                aria-expanded={openGroups[group.id]}
+              >
+                <span>{group.label}</span>
+                <span className={`admin-menu-chevron ${openGroups[group.id] ? 'admin-menu-chevron-open' : ''}`} aria-hidden="true" />
               </button>
-            </div>
-            
-            {loading ? (
-              <p>Cargando órdenes...</p>
-            ) : error ? (
-              <p style={{ color: 'var(--accent)' }}>{error}</p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                {ordenes.length === 0 ? (
-                  <div className="card" onClick={() => setShowModal(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '150px', border: '1px dashed var(--border)', background: 'transparent', cursor: 'pointer' }}>
-                    <p style={{ color: 'var(--text-muted)' }}>No hay órdenes activas</p>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '0.5rem' }}>Click para crear tu primera orden</p>
-                  </div>
-                ) : (
-                  ordenes.map(orden => (
-                    <div key={orden.id} className="card">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <h3 style={{ fontSize: '1.1rem' }}>{orden.cliente}</h3>
-                        <span style={{ fontSize: '0.7rem', padding: '4px 8px', background: 'rgba(59, 130, 246, 0.2)', color: 'var(--primary)', borderRadius: '12px' }}>
-                          {orden.estado}
+
+              {openGroups[group.id] && (
+                <div className="admin-menu-items">
+                  {group.items.map((sectionId) => {
+                    const section = sectionsById[sectionId];
+                    return (
+                      <Button
+                        key={section.id}
+                        className="admin-menu-item"
+                        variant={activeSection === section.id ? 'primary' : 'ghost'}
+                        size="sm"
+                        onClick={() => {
+                          setActiveSection(section.id);
+                          setMenuOpen(false);
+                        }}
+                        aria-label={section.label}
+                      >
+                        <span className="admin-menu-item-mark">
+                          <MenuIcon name={section.icon} />
                         </span>
-                      </div>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '10px' }}>{orden.descripcion}</p>
-                      <p style={{ fontSize: '0.9rem' }}>Cantidad: <strong>{orden.cantidad}</strong></p>
-                      <p style={{ fontSize: '0.9rem' }}>Servicio: <strong>{orden.tipo_servicio}</strong></p>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h2>Pizarra de {activeTab}</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Administra los procesos pre-prensa autorizados para tu rol.</p>
-            </div>
-            <Pizarra ordenes={ordenes} area={activeTab} recargar={cargarOrdenes} />
-          </>
-        )}
-      </section>
-
-      {/* MODAL CREAR ORDEN */}
-      {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div className="glass-panel fade-in" style={{ width: '100%', maxWidth: '500px', background: 'var(--bg-panel)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h2>Crear Nueva Orden</h2>
-              <button onClick={() => setShowModal(false)} style={{ background: 'transparent', padding: 0, color: 'var(--text-muted)' }}>X</button>
-            </div>
-
-            <form onSubmit={handleCrearOrden} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Cliente</label>
-                <input name="cliente" value={formData.cliente} onChange={handleChange} required placeholder="Nombre del cliente" />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Descripción / Producto</label>
-                <input name="descripcion" value={formData.descripcion} onChange={handleChange} required placeholder="Ej: Revistas 20 pág" />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Cantidad a producir</label>
-                <input type="number" name="cantidad" value={formData.cantidad} onChange={handleChange} required min="1" />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Tipo de Servicio</label>
-                <select name="tipo_servicio" value={formData.tipo_servicio} onChange={handleChange} style={{ width: '100%', padding: '12px', background: 'var(--bg-dark)', color: 'white', border: `1px solid var(--border)`, borderRadius: '6px' }}>
-                  <option value="COMPLETO">COMPLETO</option>
-                  <option value="SOLO_IMPRESION">SOLO IMPRESIÓN</option>
-                  <option value="PERSONALIZADO">PERSONALIZADO</option>
-                </select>
-              </div>
-
-              {formData.tipo_servicio === 'PERSONALIZADO' && (
-                <div style={{ padding: '10px', border: '1px dashed var(--border)', borderRadius: '6px' }}>
-                  <p style={{ fontSize: '0.9rem', marginBottom: '10px' }}>Selecciona los procesos:</p>
-                  {['DISEÑO', 'PLACAS', 'IMPRESION', 'ACABADOS'].map(proc => (
-                    <label key={proc} style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', cursor: 'pointer' }}>
-                      <input 
-                        type="checkbox" 
-                        style={{ width: 'auto', marginRight: '10px' }}
-                        checked={formData.procesos_personalizados.includes(proc)}
-                        onChange={() => handleCheckboxChange(proc)}
-                      />
-                      {proc}
-                    </label>
-                  ))}
+                        <span>{section.label}</span>
+                      </Button>
+                    );
+                  })}
                 </div>
               )}
+            </div>
+          ))}
+        </nav>
+      </aside>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ background: 'transparent', border: '1px solid var(--border)' }}>Cancelar</button>
-                <button type="submit" style={{ flex: 1 }}>Guardar Orden</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <main className="admin-main">
+        <section className="admin-content">
+          <ActiveComponent />
+        </section>
+      </main>
     </div>
   );
 }
