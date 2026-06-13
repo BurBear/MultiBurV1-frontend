@@ -122,6 +122,25 @@ function formatDuration(minutes) {
   return `${hours} h ${rest} min`;
 }
 
+function formatSignedMinutes(value) {
+  if (value === null || value === undefined || value === '') return '-';
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '-';
+  if (number === 0) return '0 min';
+  return `${number > 0 ? '+' : ''}${number} min`;
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function emptyTendencias() {
   return {
     procesos_frecuentes: [],
@@ -129,6 +148,27 @@ function emptyTendencias() {
     promedio_duracion_por_proceso: [],
     cantidad_registros: 0,
   };
+}
+
+function getPredictionStatus(prediction) {
+  return prediction.estado_riesgo || prediction.estado || 'REFERENCIAL';
+}
+
+function getPredictionConfidence(prediction) {
+  return prediction.confianza_general || prediction.confianza || 'BAJA';
+}
+
+function getPredictionRiskTone(status) {
+  if (['RETRASADO', 'DESVIADA'].includes(status)) return 'danger';
+  if (['EN_RIESGO', 'REFERENCIAL'].includes(status)) return 'warning';
+  if (['A_TIEMPO', 'CONFIABLE', 'ACERTADA'].includes(status)) return 'success';
+  return 'neutral';
+}
+
+function getConfidenceTone(confidence) {
+  if (confidence === 'ALTA') return 'success';
+  if (confidence === 'MEDIA') return 'info';
+  return 'warning';
 }
 
 function getProcesoRol(proceso) {
@@ -252,6 +292,106 @@ function HistoricalTrendsSection({ tendencias, loading, error }) {
             />
           </div>
         </div>
+      )}
+    </section>
+  );
+}
+
+function PredictionReportSection({ report, loading }) {
+  const resumen = report.resumenIA;
+
+  return (
+    <section className="panel report-ai-panel">
+      <div className="section-heading">
+        <div>
+          <h2>Analisis IA de tiempos</h2>
+          <p>Predicciones guardadas, riesgo de entrega y diferencia entre tiempo estimado y real.</p>
+        </div>
+        <Badge tone={resumen.riesgo > 0 ? 'warning' : 'success'}>
+          {loading ? 'Cargando IA' : `${formatNumber(resumen.total)} predicciones`}
+        </Badge>
+      </div>
+
+      <div className="report-ai-summary">
+        <div>
+          <span>Predicciones IA</span>
+          <strong>{loading ? '-' : formatNumber(resumen.total)}</strong>
+          <small>{formatNumber(resumen.muestraHistorica)} registros historicos usados</small>
+        </div>
+        <div>
+          <span>Riesgo detectado</span>
+          <strong>{loading ? '-' : formatNumber(resumen.riesgo)}</strong>
+          <small>Incluye retrasadas, en riesgo y referenciales</small>
+        </div>
+        <div>
+          <span>Confiabilidad util</span>
+          <strong>{loading ? '-' : formatNumber(resumen.confiables)}</strong>
+          <small>{formatNumber(resumen.referenciales)} con confianza baja</small>
+        </div>
+        <div>
+          <span>Desviacion media</span>
+          <strong>{loading ? '-' : resumen.desviacionPromedio === null ? '-' : formatDuration(resumen.desviacionPromedio)}</strong>
+          <small>{formatNumber(resumen.comparadas)} comparadas contra tiempo real</small>
+        </div>
+      </div>
+
+      {report.prediccionesIA.length === 0 ? (
+        <div className="empty-state compact">
+          <strong>Sin predicciones para este filtro</strong>
+          <p>Genera predicciones desde el detalle de una orden de produccion para alimentar este reporte.</p>
+        </div>
+      ) : (
+        <>
+          <SimpleReportTable
+            columns={[
+              { key: 'op', label: 'OP' },
+              { key: 'ot', label: 'OT' },
+              ...(!report.isClientSelected ? [{ key: 'cliente', label: 'Cliente' }] : []),
+              { key: 'trabajo', label: 'Trabajo' },
+              { key: 'estimado', label: 'Estimado' },
+              { key: 'real', label: 'Real' },
+              { key: 'diferencia', label: 'Diferencia' },
+              {
+                key: 'riesgo',
+                label: 'Riesgo',
+                render: (row) => <Badge tone={getPredictionRiskTone(row.riesgo)}>{formatStatus(row.riesgo)}</Badge>,
+              },
+              {
+                key: 'confianza',
+                label: 'Confianza',
+                render: (row) => <Badge tone={getConfidenceTone(row.confianza)}>{row.confianza}</Badge>,
+              },
+              { key: 'muestra', label: 'Muestra' },
+              { key: 'sugerida', label: 'Entrega sugerida' },
+            ]}
+            rows={report.prediccionesIA}
+            emptyText="No hay predicciones registradas para este filtro."
+          />
+
+          <div className="report-ai-processes">
+            <div className="section-heading compact-heading">
+              <div>
+                <h3>Desglose IA por proceso</h3>
+                <p>Tiempo estimado por proceso segun cada prediccion registrada.</p>
+              </div>
+            </div>
+            <SimpleReportTable
+              columns={[
+                { key: 'op', label: 'OP' },
+                { key: 'proceso', label: 'Proceso' },
+                { key: 'estimado', label: 'Estimado' },
+                { key: 'muestra', label: 'Muestra' },
+                {
+                  key: 'confianza',
+                  label: 'Confianza',
+                  render: (row) => <Badge tone={getConfidenceTone(row.confianza)}>{row.confianza}</Badge>,
+                },
+              ]}
+              rows={report.prediccionesProcesosIA}
+              emptyText="No hay desglose de procesos IA para este filtro."
+            />
+          </div>
+        </>
       )}
     </section>
   );
@@ -416,6 +556,26 @@ function ReportesPrintDocument({ report, clienteLabel, fromDate, toDate }) {
         <div><span>Merma</span><strong>{report.resumen.merma}%</strong></div>
         <div><span>Incidencias abiertas</span><strong>{formatNumber(report.resumen.incidenciasAbiertas)}</strong></div>
         <div><span>OC pendientes</span><strong>{formatNumber(report.resumen.ocPendientes)}</strong></div>
+        <div><span>Predicciones IA</span><strong>{formatNumber(report.resumenIA.total)}</strong></div>
+        <div><span>Riesgo IA</span><strong>{formatNumber(report.resumenIA.riesgo)}</strong></div>
+        <div><span>Desviacion IA</span><strong>{report.resumenIA.desviacionPromedio === null ? '-' : formatDuration(report.resumenIA.desviacionPromedio)}</strong></div>
+      </section>
+
+      <section className="print-section">
+        <h3>Predicciones IA registradas</h3>
+        <PrintTable
+          columns={[
+            { key: 'op', label: 'OP' },
+            { key: 'ot', label: 'OT' },
+            { key: 'cliente', label: 'Cliente' },
+            { key: 'estimado', label: 'Estimado' },
+            { key: 'real', label: 'Real' },
+            { key: 'diferencia', label: 'Diferencia' },
+            { key: 'riesgo', label: 'Riesgo', render: (row) => formatStatus(row.riesgo) },
+            { key: 'confianza', label: 'Confianza' },
+          ]}
+          rows={report.prediccionesIA}
+        />
       </section>
 
       {report.isClientSelected && (
@@ -543,6 +703,7 @@ export default function Reportes() {
     materiales: [],
     formatos: [],
     maquinas: [],
+    predicciones: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -565,6 +726,7 @@ export default function Reportes() {
         materialesData,
         formatosData,
         maquinasData,
+        prediccionesData,
       ] = await Promise.all([
         clientesService.listar(),
         ordenesTrabajoService.listarOrdenesTrabajo(),
@@ -573,6 +735,7 @@ export default function Reportes() {
         materialesService.listar(),
         formatosService.listar(),
         maquinasService.listar(),
+        prediccionService.listarPredicciones().catch(() => []),
       ]);
 
       setData({
@@ -583,6 +746,7 @@ export default function Reportes() {
         materiales: asArray(materialesData),
         formatos: asArray(formatosData),
         maquinas: asArray(maquinasData),
+        predicciones: asArray(prediccionesData),
       });
     } catch (err) {
       setError(err.message || 'No se pudieron cargar los reportes.');
@@ -630,6 +794,7 @@ export default function Reportes() {
     const formatosById = indexById(data.formatos);
     const maquinasById = indexById(data.maquinas);
     const trabajosById = indexById(data.ordenesTrabajo);
+    const produccionesById = indexById(data.ordenesProduccion);
     const isClientSelected = clienteFilter !== 'TODOS';
 
     const producciones = data.ordenesProduccion
@@ -659,6 +824,96 @@ export default function Reportes() {
       (incidencia.orden_produccion_id && produccionIds.has(String(incidencia.orden_produccion_id)))
       || ((incidencia.orden_id || incidencia.orden_trabajo_id) && trabajoIds.has(String(incidencia.orden_id || incidencia.orden_trabajo_id)))
     ));
+
+    const prediccionesFiltradas = data.predicciones
+      .filter((prediction) => {
+        const produccion = getFromMap(produccionesById, prediction.orden_produccion_id);
+        const predictionClienteId = prediction.cliente_id ?? produccion?.cliente_id;
+        return !isClientSelected || sameId(predictionClienteId, clienteFilter);
+      })
+      .filter((prediction) => (
+        isWithinDateRange(
+          prediction.fecha_calculo || prediction.fecha_hora_sugerida_entrega,
+          fromDate,
+          toDate,
+        )
+      ));
+
+    const prediccionesComparadas = prediccionesFiltradas.filter((prediction) => (
+      prediction.duracion_real_minutos !== null
+      && prediction.duracion_real_minutos !== undefined
+      && prediction.diferencia_minutos !== null
+      && prediction.diferencia_minutos !== undefined
+    ));
+    const prediccionesRiesgo = prediccionesFiltradas.filter((prediction) => (
+      ['EN_RIESGO', 'RETRASADO', 'REFERENCIAL', 'DESVIADA'].includes(getPredictionStatus(prediction))
+    ));
+    const prediccionesConfiables = prediccionesFiltradas.filter((prediction) => (
+      ['ALTA', 'MEDIA'].includes(getPredictionConfidence(prediction))
+    ));
+    const prediccionesReferenciales = prediccionesFiltradas.filter((prediction) => (
+      getPredictionConfidence(prediction) === 'BAJA' || getPredictionStatus(prediction) === 'REFERENCIAL'
+    ));
+    const desviacionPromedio = prediccionesComparadas.length
+      ? Math.round(
+        prediccionesComparadas.reduce(
+          (total, prediction) => total + Math.abs(Number(prediction.diferencia_minutos || 0)),
+          0,
+        ) / prediccionesComparadas.length,
+      )
+      : null;
+
+    const prediccionesDetalle = prediccionesFiltradas.map((prediction) => {
+      const produccion = getFromMap(produccionesById, prediction.orden_produccion_id);
+      const trabajo = produccion ? getFromMap(trabajosById, produccion.orden_trabajo_id) : null;
+      const cliente = getFromMap(clientesById, prediction.cliente_id ?? produccion?.cliente_id);
+      return {
+        id: prediction.id,
+        op: produccion
+          ? formatOrderCode('OP', produccion.codigo, produccion.id)
+          : `OP #${prediction.orden_produccion_id || '-'}`,
+        ot: trabajo ? formatOrderCode('OT', trabajo.codigo, trabajo.id) : '-',
+        cliente: cliente?.nombre || '-',
+        trabajo: produccion?.descripcion || '-',
+        estimado: formatDuration(prediction.duracion_estimada_minutos),
+        real: prediction.duracion_real_minutos === null || prediction.duracion_real_minutos === undefined
+          ? '-'
+          : formatDuration(prediction.duracion_real_minutos),
+        diferencia: formatSignedMinutes(prediction.diferencia_minutos),
+        riesgo: getPredictionStatus(prediction),
+        confianza: getPredictionConfidence(prediction),
+        muestra: formatNumber(prediction.muestra_historica_total || 0),
+        sugerida: formatLocalDateTime(prediction.fecha_hora_sugerida_entrega),
+        calculada: formatLocalDateTime(prediction.fecha_calculo),
+      };
+    }).sort((a, b) => b.id - a.id);
+
+    const prediccionesProcesosIA = prediccionesFiltradas.flatMap((prediction) => {
+      const produccion = getFromMap(produccionesById, prediction.orden_produccion_id);
+      const op = produccion
+        ? formatOrderCode('OP', produccion.codigo, produccion.id)
+        : `OP #${prediction.orden_produccion_id || '-'}`;
+      return parseJsonArray(prediction.desglose_json).map((item, index) => ({
+        id: `${prediction.id}-${item.tipo_proceso || index}`,
+        op,
+        proceso: item.tipo_proceso || '-',
+        estimado: formatDuration(item.duracion_estimada_minutos),
+        muestra: formatNumber(item.muestra_historica || 0),
+        confianza: item.confianza || getPredictionConfidence(prediction),
+      }));
+    });
+
+    const resumenIA = {
+      total: prediccionesFiltradas.length,
+      riesgo: prediccionesRiesgo.length,
+      confiables: prediccionesConfiables.length,
+      referenciales: prediccionesReferenciales.length,
+      comparadas: prediccionesComparadas.length,
+      desviacionPromedio,
+      muestraHistorica: sumBy(prediccionesFiltradas, (prediction) => prediction.muestra_historica_total),
+      estimadoTotal: sumBy(prediccionesFiltradas, (prediction) => prediction.duracion_estimada_minutos),
+      realTotal: sumBy(prediccionesComparadas, (prediction) => prediction.duracion_real_minutos),
+    };
 
     const cantidadPlanificada = sumBy(producciones, (produccion) => produccion.cantidad);
     const cantidadBuena = sumBy(producciones, (produccion) => getImpresionProceso(produccion)?.cantidad_buena);
@@ -831,6 +1086,9 @@ export default function Reportes() {
       procesosDetalle,
       movimientosProceso,
       entregas,
+      resumenIA,
+      prediccionesIA: prediccionesDetalle,
+      prediccionesProcesosIA,
     };
   }, [clienteFilter, data, fromDate, toDate]);
 
@@ -916,6 +1174,8 @@ export default function Reportes() {
         loading={tendenciasLoading}
         error={tendenciasError}
       />
+
+      <PredictionReportSection report={report} loading={loading} />
 
       {report.isClientSelected ? (
         <>

@@ -52,6 +52,44 @@ function formatDuration(minutes) {
   return `${hours} h ${rest} min`;
 }
 
+function emptyTendencias() {
+  return {
+    procesos_frecuentes: [],
+    materiales_frecuentes: [],
+    promedio_duracion_por_proceso: [],
+    cantidad_registros: 0,
+  };
+}
+
+function getPredictionStatus(prediction) {
+  return prediction.estado_riesgo || prediction.estado || 'REFERENCIAL';
+}
+
+function getPredictionConfidence(prediction) {
+  return prediction.confianza_general || prediction.confianza || 'BAJA';
+}
+
+function getPredictionRiskTone(status) {
+  if (['RETRASADO', 'DESVIADA'].includes(status)) return 'danger';
+  if (['EN_RIESGO', 'REFERENCIAL'].includes(status)) return 'warning';
+  if (['A_TIEMPO', 'CONFIABLE', 'ACERTADA'].includes(status)) return 'success';
+  return 'neutral';
+}
+
+function getConfidenceTone(confidence) {
+  if (confidence === 'ALTA') return 'success';
+  if (confidence === 'MEDIA') return 'info';
+  return 'warning';
+}
+
+function formatSignedMinutes(value) {
+  if (value === null || value === undefined || value === '') return '-';
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '-';
+  if (number === 0) return '0 min';
+  return `${number > 0 ? '+' : ''}${number} min`;
+}
+
 export default function Dashboard() {
   const [data, setData] = useState({
     clientes: [],
@@ -60,12 +98,8 @@ export default function Dashboard() {
     ordenesTrabajo: [],
     ordenesProduccion: [],
     incidencias: [],
-    tendencias: {
-      procesos_frecuentes: [],
-      materiales_frecuentes: [],
-      promedio_duracion_por_proceso: [],
-      cantidad_registros: 0,
-    },
+    tendencias: emptyTendencias(),
+    predicciones: [],
   });
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState([]);
@@ -84,6 +118,7 @@ export default function Dashboard() {
       ['ordenesProduccion', ordenesProduccionService.listarOrdenesProduccion()],
       ['incidencias', incidenciasService.listarIncidencias()],
       ['tendencias', prediccionService.obtenerTendenciasProduccion()],
+      ['predicciones', prediccionService.listarPredicciones()],
     ];
 
     const results = await Promise.allSettled(requests.map(([, request]) => request));
@@ -93,9 +128,11 @@ export default function Dashboard() {
     results.forEach((result, index) => {
       const key = requests[index][0];
       if (result.status === 'fulfilled') {
-        nextData[key] = asArray(result.value);
+        nextData[key] = key === 'tendencias'
+          ? result.value || emptyTendencias()
+          : asArray(result.value);
       } else {
-        nextData[key] = [];
+        nextData[key] = key === 'tendencias' ? emptyTendencias() : [];
         nextErrors.push(`${key}: ${result.reason?.message || 'error de carga'}`);
       }
     });
@@ -139,6 +176,7 @@ export default function Dashboard() {
   const dashboardData = useMemo(() => {
     const clientesById = indexById(data.clientes);
     const maquinasById = indexById(data.maquinas);
+    const produccionesById = indexById(data.ordenesProduccion);
     const now = new Date();
 
     const actividad = data.ordenesProduccion.flatMap((produccion) => (
@@ -205,6 +243,48 @@ export default function Dashboard() {
       .sort((a, b) => getDateValue(a.entrega) - getDateValue(b.entrega))
       .slice(0, 6);
 
+    const predictionRows = data.predicciones
+      .map((prediction) => {
+        const produccion = produccionesById[prediction.orden_produccion_id];
+        const cliente = clientesById[prediction.cliente_id || produccion?.cliente_id];
+        return {
+          id: prediction.id,
+          op: produccion
+            ? formatOrderCode('OP', produccion.codigo, produccion.id)
+            : `OP #${prediction.orden_produccion_id || '-'}`,
+          trabajo: produccion?.descripcion || 'Orden de produccion',
+          cliente: cliente?.nombre || (prediction.cliente_id ? `Cliente #${prediction.cliente_id}` : '-'),
+          riesgo: getPredictionStatus(prediction),
+          confianza: getPredictionConfidence(prediction),
+          estimado: Number(prediction.duracion_estimada_minutos || 0),
+          real: prediction.duracion_real_minutos,
+          diferencia: prediction.diferencia_minutos,
+          sugerida: prediction.fecha_hora_sugerida_entrega,
+          calculada: prediction.fecha_calculo,
+        };
+      })
+      .sort((a, b) => getDateValue(b.calculada) - getDateValue(a.calculada));
+
+    const riesgoRows = predictionRows.filter((prediction) => (
+      ['EN_RIESGO', 'RETRASADO', 'REFERENCIAL', 'DESVIADA'].includes(prediction.riesgo)
+    ));
+    const comparadas = predictionRows.filter((prediction) => (
+      prediction.real !== null && prediction.real !== undefined
+      && prediction.diferencia !== null && prediction.diferencia !== undefined
+    ));
+    const desviacionPromedio = comparadas.length
+      ? Math.round(
+        comparadas.reduce((total, prediction) => total + Math.abs(Number(prediction.diferencia || 0)), 0)
+        / comparadas.length
+      )
+      : null;
+    const confiables = predictionRows.filter((prediction) => (
+      ['ALTA', 'MEDIA'].includes(prediction.confianza)
+    )).length;
+    const referenciales = predictionRows.filter((prediction) => (
+      prediction.confianza === 'BAJA' || prediction.riesgo === 'REFERENCIAL'
+    )).length;
+
     return {
       actividad,
       estadosProduccion: Object.entries(estadosProduccion).map(([estado, total]) => ({ estado, total })),
@@ -213,6 +293,14 @@ export default function Dashboard() {
       proximasEntregasProduccion,
       tendenciaPredictiva: {
         registros: Number(data.tendencias?.cantidad_registros || 0),
+        predicciones: predictionRows.length,
+        riesgos: riesgoRows.length,
+        confiables,
+        referenciales,
+        comparadas: comparadas.length,
+        desviacionPromedio,
+        riesgoRows: riesgoRows.slice(0, 4),
+        recientes: predictionRows.slice(0, 4),
         procesoTop: asArray(data.tendencias?.procesos_frecuentes)[0]?.tipo_proceso || '-',
         promedioTop: asArray(data.tendencias?.promedio_duracion_por_proceso)[0]?.promedio_minutos || 0,
         nivelDatos: Number(data.tendencias?.cantidad_registros || 0) >= 10
@@ -331,6 +419,86 @@ export default function Dashboard() {
           <SummaryCard label="Materiales activos" value={loading ? '-' : resumen.materialesActivos} />
           <SummaryCard label="Maquinas activas" value={loading ? '-' : resumen.maquinasActivas} />
         </div>
+      </section>
+
+      <section className="panel dashboard-ai-panel">
+        <div className="section-heading">
+          <div>
+            <h2>IA predictiva</h2>
+            <p>Riesgo, confianza y comparacion entre tiempos estimados y reales.</p>
+          </div>
+          <Badge tone={dashboardData.tendenciaPredictiva.riesgos > 0 ? 'warning' : 'success'}>
+            {dashboardData.tendenciaPredictiva.riesgos > 0 ? 'Revisar riesgos' : 'Sin alertas criticas'}
+          </Badge>
+        </div>
+
+        <div className="dashboard-ai-grid">
+          <div>
+            <span>Predicciones guardadas</span>
+            <strong>{formatNumber(dashboardData.tendenciaPredictiva.predicciones)}</strong>
+            <small>{formatNumber(dashboardData.tendenciaPredictiva.registros)} procesos historicos</small>
+          </div>
+          <div>
+            <span>En riesgo o referenciales</span>
+            <strong>{formatNumber(dashboardData.tendenciaPredictiva.riesgos)}</strong>
+            <small>{formatNumber(dashboardData.tendenciaPredictiva.referenciales)} con confianza baja</small>
+          </div>
+          <div>
+            <span>Confiabilidad util</span>
+            <strong>{formatNumber(dashboardData.tendenciaPredictiva.confiables)}</strong>
+            <small>Predicciones con confianza alta o media</small>
+          </div>
+          <div>
+            <span>Desviacion media</span>
+            <strong>{dashboardData.tendenciaPredictiva.desviacionPromedio === null ? '-' : formatDuration(dashboardData.tendenciaPredictiva.desviacionPromedio)}</strong>
+            <small>{formatNumber(dashboardData.tendenciaPredictiva.comparadas)} predicciones comparadas</small>
+          </div>
+        </div>
+
+        {dashboardData.tendenciaPredictiva.predicciones === 0 ? (
+          <div className="empty-state compact">
+            <strong>Sin predicciones registradas</strong>
+            <p>Genera predicciones IA desde el detalle de una orden de produccion para alimentar este tablero.</p>
+          </div>
+        ) : (
+          <div className="dashboard-ai-columns">
+            <div>
+              <h3>Alertas IA</h3>
+              {dashboardData.tendenciaPredictiva.riesgoRows.length === 0 ? (
+                <p className="muted">No hay predicciones marcadas como riesgo o referenciales.</p>
+              ) : (
+                <div className="dashboard-ai-list">
+                  {dashboardData.tendenciaPredictiva.riesgoRows.map((prediction) => (
+                    <article key={prediction.id}>
+                      <div>
+                        <strong>{prediction.op}</strong>
+                        <span>{prediction.cliente}</span>
+                      </div>
+                      <Badge tone={getPredictionRiskTone(prediction.riesgo)}>{formatStatus(prediction.riesgo)}</Badge>
+                      <small>Entrega sugerida: {formatLocalDateTime(prediction.sugerida)}</small>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h3>Ultimas predicciones</h3>
+              <div className="dashboard-ai-list">
+                {dashboardData.tendenciaPredictiva.recientes.map((prediction) => (
+                  <article key={prediction.id}>
+                    <div>
+                      <strong>{prediction.op}</strong>
+                      <span>{formatDuration(prediction.estimado)} estimados</span>
+                    </div>
+                    <Badge tone={getConfidenceTone(prediction.confianza)}>{prediction.confianza}</Badge>
+                    <small>Diferencia real: {formatSignedMinutes(prediction.diferencia)}</small>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       <div className="dashboard-grid">
