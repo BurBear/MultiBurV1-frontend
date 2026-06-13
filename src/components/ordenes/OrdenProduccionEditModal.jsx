@@ -3,19 +3,12 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Modal from '../ui/Modal';
 import Select from '../ui/Select';
+import { toPeruDateTimeInputValue } from '../../utils/datetime';
 import { formatOrderCode } from '../../utils/formatters';
 import { hasErrors, isBlank, validateNonNegativeNumber, validatePositiveNumber } from '../../utils/validation';
 
 function optionLabel(item) {
   return item.nombre || item.codigo || `ID ${item.id}`;
-}
-
-function toDateTimeInputValue(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
 }
 
 export default function OrdenProduccionEditModal({
@@ -29,7 +22,7 @@ export default function OrdenProduccionEditModal({
   const [values, setValues] = useState({
     descripcion: orden.descripcion || '',
     cantidad: orden.cantidad || '',
-    fecha_entrega_estimada: toDateTimeInputValue(orden.fecha_entrega_estimada),
+    fecha_entrega_estimada: toPeruDateTimeInputValue(orden.fecha_entrega_estimada),
     demasia: orden.demasia ?? '',
     material_id: orden.material_id || '',
     formato_id: orden.formato_id || '',

@@ -22,7 +22,7 @@ import * as maquinasService from '../../services/maquinasService';
 import * as ordenesProduccionService from '../../services/ordenesProduccionService';
 import * as ordenesTrabajoService from '../../services/ordenesTrabajoService';
 import * as incidenciasService from '../../services/incidenciasService';
-import { formatLocalDateTime } from '../../utils/datetime';
+import { formatDateTime, formatLocalDateTime } from '../../utils/datetime';
 import { formatOrderCode, formatStatus, getStatusTone } from '../../utils/formatters';
 import { hasErrors, isBlank } from '../../utils/validation';
 
@@ -33,7 +33,7 @@ function asArray(data) {
 }
 
 function getEntregaLabel(row) {
-  return row.fecha_entrega_estimada || '-';
+  return formatLocalDateTime(row.fecha_entrega_estimada);
 }
 
 function getProduccionesSearch(row) {
@@ -354,11 +354,11 @@ function OrdenTrabajoPrintDocument({ orden, clienteNombre, producciones, inciden
         <div><span>Cliente</span><strong>{clienteNombre || orden.cliente_id}</strong></div>
         <div><span>Estado</span><strong>{formatStatus(orden.estado)}</strong></div>
         <div><span>Entrega estimada</span><strong>{getEntregaLabel(orden)}</strong></div>
-        <div><span>Entrega real</span><strong>{formatLocalDateTime(orden.fecha_entrega_real)}</strong></div>
+        <div><span>Entrega real</span><strong>{formatDateTime(orden.fecha_entrega_real)}</strong></div>
         <div><span>Orden de compra</span><strong>{ocLabel}</strong></div>
         <div><span>Fecha OC</span><strong>{orden.fecha_orden_compra || '-'}</strong></div>
         <div><span>Guia de entrega</span><strong>{orden.numero_guia_entrega || '-'}</strong></div>
-        <div><span>Fecha registro OC</span><strong>{formatLocalDateTime(orden.fecha_registro_orden_compra)}</strong></div>
+        <div><span>Fecha registro OC</span><strong>{formatDateTime(orden.fecha_registro_orden_compra)}</strong></div>
       </section>
 
       {orden.observacion_orden_compra && (
@@ -899,7 +899,7 @@ export default function OrdenesTrabajo() {
                   </div>
                   {selected.tiene_orden_compra && selected.fecha_orden_compra && <small>{selected.fecha_orden_compra}</small>}
                   {selected.fecha_registro_orden_compra && (
-                    <small>Registrada: {formatLocalDateTime(selected.fecha_registro_orden_compra)}</small>
+                    <small>Registrada: {formatDateTime(selected.fecha_registro_orden_compra)}</small>
                   )}
                   {selected.observacion_orden_compra && <small>{selected.observacion_orden_compra}</small>}
                   {selected.tiene_orden_compra && (

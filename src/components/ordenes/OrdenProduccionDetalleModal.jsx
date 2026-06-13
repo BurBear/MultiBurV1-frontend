@@ -7,7 +7,7 @@ import {
   generarPrediccionOrdenProduccion,
   obtenerPrediccionesPorOrdenProduccion,
 } from '../../services/prediccionService';
-import { formatLocalDateTime } from '../../utils/datetime';
+import { formatDateTime, formatLocalDateTime } from '../../utils/datetime';
 import { formatNumber, formatOrderCode, formatStatus, getStatusTone } from '../../utils/formatters';
 import { getProcessArea } from '../../utils/procesos';
 
@@ -136,7 +136,7 @@ function PredictionPanel({
                 <div className="prediction-history-card-heading">
                   <div>
                     <strong>Prediccion #{prediction.id}</strong>
-                    <small>Calculada: {formatLocalDateTime(prediction.fecha_calculo)}</small>
+                    <small>Calculada: {formatDateTime(prediction.fecha_calculo)}</small>
                   </div>
                   <div className="prediction-history-badges">
                     <Badge tone={getRiskTone(prediction.estado_riesgo)}>{formatStatus(prediction.estado_riesgo)}</Badge>
@@ -159,7 +159,7 @@ function PredictionPanel({
                   </div>
                   <div>
                     <span>Sugerida</span>
-                    <strong>{formatLocalDateTime(prediction.fecha_hora_sugerida_entrega)}</strong>
+                    <strong>{formatDateTime(prediction.fecha_hora_sugerida_entrega)}</strong>
                     <small>fecha IA</small>
                   </div>
                   <div>
@@ -256,11 +256,11 @@ function ProcessTimeline({ procesos }) {
           <dl className="production-process-step-meta">
             <div>
               <dt>Inicio</dt>
-              <dd>{formatLocalDateTime(proceso.fecha_inicio)}</dd>
+              <dd>{formatDateTime(proceso.fecha_inicio)}</dd>
             </div>
             <div>
               <dt>Fin</dt>
-              <dd>{formatLocalDateTime(proceso.fecha_fin)}</dd>
+              <dd>{formatDateTime(proceso.fecha_fin)}</dd>
             </div>
             <div>
               <dt>Buena</dt>
@@ -423,7 +423,7 @@ export default function OrdenProduccionDetalleModal({
                 <DetailItem label="Estado" value={<Badge tone={getStatusTone(produccion.estado)}>{formatStatus(produccion.estado)}</Badge>} />
                 <DetailItem label="Orden de trabajo" value={produccion.orden_trabajo_id ? `OT #${produccion.orden_trabajo_id}` : '-'} />
                 <DetailItem label="Origen" value={formatStatus(produccion.tipo_origen)} helper={`Servicio: ${formatStatus(produccion.tipo_servicio)}`} />
-                <DetailItem label="Creacion" value={formatLocalDateTime(produccion.created_at)} helper={`Usuario #${produccion.user_id || '-'}`} />
+                <DetailItem label="Creacion" value={formatDateTime(produccion.created_at)} helper={`Usuario #${produccion.user_id || '-'}`} />
               </div>
             </section>
 

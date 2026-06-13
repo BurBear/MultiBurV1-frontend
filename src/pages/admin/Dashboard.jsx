@@ -9,7 +9,12 @@ import * as maquinasService from '../../services/maquinasService';
 import * as ordenesTrabajoService from '../../services/ordenesTrabajoService';
 import * as ordenesProduccionService from '../../services/ordenesProduccionService';
 import * as prediccionService from '../../services/prediccionService';
-import { formatLocalDateTime } from '../../utils/datetime';
+import {
+  formatDateTime,
+  formatLocalDateTime,
+  getApiDateTimeValue,
+  getLocalDateTimeValue,
+} from '../../utils/datetime';
 import { formatNumber, formatOrderCode, formatStatus, getStatusTone } from '../../utils/formatters';
 import { getProcessArea } from '../../utils/procesos';
 
@@ -27,11 +32,6 @@ function indexById(items) {
     acc[item.id] = item;
     return acc;
   }, {});
-}
-
-function getDateValue(value) {
-  const date = value ? new Date(value) : null;
-  return date && !Number.isNaN(date.getTime()) ? date.getTime() : Number.MAX_SAFE_INTEGER;
 }
 
 function getProduccionStatus(produccion) {
@@ -193,7 +193,7 @@ export default function Dashboard() {
           maquina: maquinasById[produccion.maquina_id]?.nombre || 'Sin maquina',
           inicio: proceso.fecha_inicio,
         }))
-    )).sort((a, b) => getDateValue(a.inicio) - getDateValue(b.inicio));
+    )).sort((a, b) => getApiDateTimeValue(a.inicio) - getApiDateTimeValue(b.inicio));
 
     const estadosProduccion = data.ordenesProduccion.reduce((acc, produccion) => {
       const status = getProduccionStatus(produccion);
@@ -224,9 +224,9 @@ export default function Dashboard() {
         cliente: clientesById[orden.cliente_id]?.nombre || `Cliente #${orden.cliente_id}`,
         estado: orden.estado || 'PENDIENTE',
         entrega: orden.fecha_entrega_estimada,
-        vencida: getDateValue(orden.fecha_entrega_estimada) < now.getTime(),
+        vencida: getLocalDateTimeValue(orden.fecha_entrega_estimada) < now.getTime(),
       }))
-      .sort((a, b) => getDateValue(a.entrega) - getDateValue(b.entrega))
+      .sort((a, b) => getLocalDateTimeValue(a.entrega) - getLocalDateTimeValue(b.entrega))
       .slice(0, 6);
 
     const proximasEntregasProduccion = data.ordenesProduccion
@@ -238,9 +238,9 @@ export default function Dashboard() {
         cliente: clientesById[produccion.cliente_id]?.nombre || `Cliente #${produccion.cliente_id}`,
         estado: getProduccionStatus(produccion),
         entrega: produccion.fecha_entrega_estimada,
-        vencida: getDateValue(produccion.fecha_entrega_estimada) < now.getTime(),
+        vencida: getLocalDateTimeValue(produccion.fecha_entrega_estimada) < now.getTime(),
       }))
-      .sort((a, b) => getDateValue(a.entrega) - getDateValue(b.entrega))
+      .sort((a, b) => getLocalDateTimeValue(a.entrega) - getLocalDateTimeValue(b.entrega))
       .slice(0, 6);
 
     const predictionRows = data.predicciones
@@ -263,7 +263,7 @@ export default function Dashboard() {
           calculada: prediction.fecha_calculo,
         };
       })
-      .sort((a, b) => getDateValue(b.calculada) - getDateValue(a.calculada));
+      .sort((a, b) => getApiDateTimeValue(b.calculada) - getApiDateTimeValue(a.calculada));
 
     const riesgoRows = predictionRows.filter((prediction) => (
       ['EN_RIESGO', 'RETRASADO', 'REFERENCIAL', 'DESVIADA'].includes(prediction.riesgo)
@@ -393,7 +393,7 @@ export default function Dashboard() {
                       <strong>{item.maquina}</strong>
                     </div>
                   </div>
-                  <small className="dashboard-live-start">Inicio: {formatLocalDateTime(item.inicio)}</small>
+                  <small className="dashboard-live-start">Inicio: {formatDateTime(item.inicio)}</small>
                 </article>
               ))}
             </div>
@@ -475,7 +475,7 @@ export default function Dashboard() {
                         <span>{prediction.cliente}</span>
                       </div>
                       <Badge tone={getPredictionRiskTone(prediction.riesgo)}>{formatStatus(prediction.riesgo)}</Badge>
-                      <small>Entrega sugerida: {formatLocalDateTime(prediction.sugerida)}</small>
+                      <small>Entrega sugerida: {formatDateTime(prediction.sugerida)}</small>
                     </article>
                   ))}
                 </div>

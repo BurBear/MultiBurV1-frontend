@@ -11,7 +11,13 @@ import * as materialesService from '../../services/materialesService';
 import * as ordenesProduccionService from '../../services/ordenesProduccionService';
 import * as ordenesTrabajoService from '../../services/ordenesTrabajoService';
 import * as prediccionService from '../../services/prediccionService';
-import { formatLocalDateTime } from '../../utils/datetime';
+import {
+  formatDateTime,
+  formatLocalDate,
+  formatLocalDateTime,
+  getApiDateTimeValue,
+  getLocalDateTimeValue,
+} from '../../utils/datetime';
 import { formatNumber, formatOrderCode, formatStatus, getStatusTone } from '../../utils/formatters';
 import { getProcessArea } from '../../utils/procesos';
 
@@ -53,19 +59,24 @@ function getCatalogName(map, id, fallback = '-') {
   return item?.nombre || item?.codigo || fallback;
 }
 
-function isWithinDateRange(value, from, to) {
+function isWithinDateRange(value, from, to, getDateTimeValue = getLocalDateTimeValue) {
   if (!value || (!from && !to)) return true;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return true;
+  const dateValue = getDateTimeValue(value, null);
+  if (dateValue === null) return true;
   if (from) {
-    const fromDate = new Date(`${from}T00:00:00`);
-    if (date < fromDate) return false;
+    const fromDate = getLocalDateTimeValue(`${from}T00:00:00`, null);
+    if (fromDate !== null && dateValue < fromDate) return false;
   }
   if (to) {
-    const toDate = new Date(`${to}T23:59:59`);
-    if (date > toDate) return false;
+    const toDate = getLocalDateTimeValue(`${to}T23:59:59`, null);
+    if (toDate !== null && dateValue > toDate) return false;
   }
   return true;
+}
+
+function isWithinReportDateRange(localValue, apiValue, from, to) {
+  if (localValue) return isWithinDateRange(localValue, from, to, getLocalDateTimeValue);
+  return isWithinDateRange(apiValue, from, to, getApiDateTimeValue);
 }
 
 function getProduccionStatus(produccion) {
@@ -536,7 +547,7 @@ function ReportesPrintDocument({ report, clienteLabel, fromDate, toDate }) {
         </div>
         <div className="print-header-code">
           <span>Fecha</span>
-          <strong>{new Date().toLocaleDateString('es-PE')}</strong>
+          <strong>{formatLocalDate(new Date())}</strong>
         </div>
       </header>
 
@@ -681,7 +692,7 @@ function ReportesPrintDocument({ report, clienteLabel, fromDate, toDate }) {
                 { key: 'cliente', label: 'Cliente' },
                 { key: 'estado', label: 'Estado', render: (row) => formatStatus(row.estado) },
                 { key: 'entregaEstimada', label: 'Entrega estimada', render: (row) => row.entregaEstimada || '-' },
-                { key: 'entregaReal', label: 'Entrega real', render: (row) => formatLocalDateTime(row.entregaReal) },
+                { key: 'entregaReal', label: 'Entrega real', render: (row) => formatDateTime(row.entregaReal) },
                 { key: 'guia', label: 'Guia' },
                 { key: 'oc', label: 'OC' },
               ]}
@@ -799,7 +810,9 @@ export default function Reportes() {
 
     const producciones = data.ordenesProduccion
       .filter((produccion) => !isClientSelected || sameId(produccion.cliente_id, clienteFilter))
-      .filter((produccion) => isWithinDateRange(produccion.fecha_entrega_estimada || produccion.created_at, fromDate, toDate));
+      .filter((produccion) => (
+        isWithinReportDateRange(produccion.fecha_entrega_estimada, produccion.created_at, fromDate, toDate)
+      ));
 
     const produccionesByTrabajo = producciones.reduce((acc, produccion) => {
       if (produccion.orden_trabajo_id) {
@@ -812,7 +825,12 @@ export default function Reportes() {
 
     const trabajos = data.ordenesTrabajo
       .filter((orden) => !isClientSelected || sameId(orden.cliente_id, clienteFilter))
-      .filter((orden) => isWithinDateRange(orden.fecha_entrega_real || orden.fecha_entrega_estimada || orden.created_at, fromDate, toDate))
+      .filter((orden) => {
+        if (orden.fecha_entrega_real) {
+          return isWithinDateRange(orden.fecha_entrega_real, fromDate, toDate, getApiDateTimeValue);
+        }
+        return isWithinReportDateRange(orden.fecha_entrega_estimada, orden.created_at, fromDate, toDate);
+      })
       .map((orden) => ({
         ...orden,
         producciones: produccionesByTrabajo[String(orden.id)] || asArray(orden.ordenes_produccion),
@@ -836,6 +854,7 @@ export default function Reportes() {
           prediction.fecha_calculo || prediction.fecha_hora_sugerida_entrega,
           fromDate,
           toDate,
+          getApiDateTimeValue,
         )
       ));
 
@@ -883,8 +902,8 @@ export default function Reportes() {
         riesgo: getPredictionStatus(prediction),
         confianza: getPredictionConfidence(prediction),
         muestra: formatNumber(prediction.muestra_historica_total || 0),
-        sugerida: formatLocalDateTime(prediction.fecha_hora_sugerida_entrega),
-        calculada: formatLocalDateTime(prediction.fecha_calculo),
+        sugerida: formatDateTime(prediction.fecha_hora_sugerida_entrega),
+        calculada: formatDateTime(prediction.fecha_calculo),
       };
     }).sort((a, b) => b.id - a.id);
 
@@ -1035,8 +1054,8 @@ export default function Reportes() {
         estado: proceso.estado || 'PENDIENTE',
         rol: getProcesoRol(proceso),
         responsable: getProcesoResponsable(proceso),
-        inicio: formatLocalDateTime(proceso.fecha_inicio),
-        fin: formatLocalDateTime(proceso.fecha_fin),
+        inicio: formatDateTime(proceso.fecha_inicio),
+        fin: formatDateTime(proceso.fecha_fin),
         buena: formatProcessQuantity(proceso.cantidad_buena),
         mala: formatProcessQuantity(proceso.cantidad_mala),
       }));
@@ -1053,12 +1072,12 @@ export default function Reportes() {
           area: getProcessArea(proceso) || '-',
           accion: movimiento.accion || '-',
           fechaRaw: movimiento.fecha,
-          fecha: formatLocalDateTime(movimiento.fecha),
+          fecha: formatDateTime(movimiento.fecha),
           rol: getProcesoRol(proceso),
           responsable: movimiento.operador_nombre || getProcesoResponsable(proceso),
         }))
       ));
-    }).sort((a, b) => new Date(b.fechaRaw || 0).getTime() - new Date(a.fechaRaw || 0).getTime());
+    }).sort((a, b) => getApiDateTimeValue(b.fechaRaw) - getApiDateTimeValue(a.fechaRaw));
 
     const entregas = trabajos
       .filter((orden) => orden.estado === 'ENTREGADA' || getProgress(orden.producciones) === 100)
@@ -1474,7 +1493,7 @@ export default function Reportes() {
                   render: (row) => <Badge tone={getStatusTone(row.estado)}>{formatStatus(row.estado)}</Badge>,
                 },
                 { key: 'entregaEstimada', label: 'Entrega estimada', render: (row) => row.entregaEstimada || '-' },
-                { key: 'entregaReal', label: 'Entrega real', render: (row) => formatLocalDateTime(row.entregaReal) },
+                { key: 'entregaReal', label: 'Entrega real', render: (row) => formatDateTime(row.entregaReal) },
                 { key: 'guia', label: 'Guia' },
                 { key: 'oc', label: 'OC' },
               ]}

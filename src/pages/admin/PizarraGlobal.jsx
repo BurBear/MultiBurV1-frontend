@@ -712,7 +712,7 @@ export default function PizarraGlobal() {
                           <div className="work-order-code">
                             <span>Orden</span>
                             <strong>{formatOrderCode('OT', row.data.codigo, row.data.id)}</strong>
-                            <small>Entrega: {row.data.fecha_entrega_estimada || '-'}</small>
+                            <small>Entrega: {formatLocalDateTime(row.data.fecha_entrega_estimada)}</small>
                           </div>
                           <div className="work-order-work">
                             <span>Trabajo</span>
