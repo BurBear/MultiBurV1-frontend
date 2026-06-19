@@ -858,32 +858,33 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
 
             {isJuegosImpresion ? (
               <div className="operator-finish-route-detail operator-plate-route-detail">
-                <span>Placas disponibles</span>
-                <div className="operator-plate-selector-layout">
-                  <div className="operator-plate-pair-selector" aria-label="Seleccionar par de placas">
+                <div className="operator-plate-route-header">
+                  <span>Placas disponibles</span>
+                  <select
+                    aria-label="Seleccionar par de placas"
+                    className="operator-plate-pair-select"
+                    value={selectedPairKey || ''}
+                    onChange={(event) => setSelectedPlatePair(event.target.value || null)}
+                    disabled={Boolean(currentPairKey) && !previewOnly}
+                  >
+                    <option value="">Selecciona un par disponible</option>
                     {pairGroups.map((pair) => {
                       const pairStatus = getPairStatus(pair.juegos, user?.id);
                       const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
                       const pairHasAvailable = pair.juegos.some((juego) => canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO');
                       const pairSelectable = previewOnly || pairHasCurrent || pairHasAvailable;
-                      const pairSelected = selectedPair && String(selectedPair.grupo) === String(pair.grupo);
                       const pairLabel = `${pair.grupo} ${produccion.tipo_impresion || 'T+R'}`;
 
                       return (
-                        <button
-                          key={pair.grupo}
-                          type="button"
-                          className={`operator-plate-pair-option ${pairSelected ? 'operator-plate-pair-option-active' : ''}`}
-                          onClick={() => setSelectedPlatePair(String(pair.grupo))}
-                          disabled={!pairSelectable}
-                        >
-                          <strong>{pairLabel}</strong>
-                          <small>{pairStatus}</small>
-                        </button>
+                        <option key={pair.grupo} value={String(pair.grupo)} disabled={!pairSelectable}>
+                          {`${pairLabel} - ${pairStatus}`}
+                        </option>
                       );
                     })}
-                  </div>
+                  </select>
+                </div>
 
+                <div className="operator-plate-selected-area">
                   {selectedPair ? (
                     <div className="operator-plate-selected-card">
                       <span>Par {selectedPair.grupo} seleccionado</span>
@@ -935,7 +936,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                   ) : (
                     <div className="operator-plate-selected-empty">
                       <strong>Selecciona un par disponible</strong>
-                      <p>Elige un par para ver TIRA y RETIRA antes de iniciar.</p>
+                      <p>Elige el par desde el desplegable para ver TIRA y RETIRA antes de iniciar.</p>
                     </div>
                   )}
                 </div>
