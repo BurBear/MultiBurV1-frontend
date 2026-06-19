@@ -851,40 +851,38 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
 
           <section className="operator-detail-section">
             <h3>{isAcabados ? 'Control de acabado' : previewOnly ? 'Proceso' : 'Acciones'}</h3>
-            <div className="operator-process-summary">
+            <div className={`operator-process-summary ${isJuegosImpresion ? 'operator-process-summary-plates' : ''}`}>
               <strong>{isJuegosImpresion ? 'Juegos de placas' : proceso.tipo_proceso}</strong>
-              <Badge tone={getStatusTone(rowEstado)}>{formatStatus(rowEstado)}</Badge>
+              {isJuegosImpresion ? (
+                <select
+                  aria-label="Seleccionar par de placas"
+                  className="operator-plate-pair-select"
+                  value={selectedPairKey || ''}
+                  onChange={(event) => setSelectedPlatePair(event.target.value || null)}
+                  disabled={Boolean(currentPairKey) && !previewOnly}
+                >
+                  <option value="">Selecciona un par disponible</option>
+                  {pairGroups.map((pair) => {
+                    const pairStatus = getPairStatus(pair.juegos, user?.id);
+                    const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
+                    const pairHasAvailable = pair.juegos.some((juego) => canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO');
+                    const pairSelectable = previewOnly || pairHasCurrent || pairHasAvailable;
+                    const pairLabel = `${pair.grupo} ${produccion.tipo_impresion || 'T+R'}`;
+
+                    return (
+                      <option key={pair.grupo} value={String(pair.grupo)} disabled={!pairSelectable}>
+                        {`${pairLabel} - ${pairStatus}`}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <Badge tone={getStatusTone(rowEstado)}>{formatStatus(rowEstado)}</Badge>
+              )}
             </div>
 
             {isJuegosImpresion ? (
-              <div className="operator-finish-route-detail operator-plate-route-detail">
-                <div className="operator-plate-route-header">
-                  <span>Placas disponibles</span>
-                  <select
-                    aria-label="Seleccionar par de placas"
-                    className="operator-plate-pair-select"
-                    value={selectedPairKey || ''}
-                    onChange={(event) => setSelectedPlatePair(event.target.value || null)}
-                    disabled={Boolean(currentPairKey) && !previewOnly}
-                  >
-                    <option value="">Selecciona un par disponible</option>
-                    {pairGroups.map((pair) => {
-                      const pairStatus = getPairStatus(pair.juegos, user?.id);
-                      const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
-                      const pairHasAvailable = pair.juegos.some((juego) => canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO');
-                      const pairSelectable = previewOnly || pairHasCurrent || pairHasAvailable;
-                      const pairLabel = `${pair.grupo} ${produccion.tipo_impresion || 'T+R'}`;
-
-                      return (
-                        <option key={pair.grupo} value={String(pair.grupo)} disabled={!pairSelectable}>
-                          {`${pairLabel} - ${pairStatus}`}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                <div className="operator-plate-selected-area">
+              <div className="operator-plate-selected-area operator-plate-route-detail">
                   {selectedPair ? (
                     <div className="operator-plate-selected-card">
                       <span>Par {selectedPair.grupo} seleccionado</span>
@@ -901,18 +899,11 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                               <div>
                                 <strong>{juego.codigo_lado}</strong>
                                 <small>{juego.lado}</small>
-                                {(juego.cantidad_buena !== null && juego.cantidad_buena !== undefined) && (
-                                  <small>
-                                    B {formatNumber(juego.cantidad_buena)} / M {formatNumber(juego.cantidad_mala || 0)}
-                                  </small>
-                                )}
                                 {(juego.demasia_consumida !== null && juego.demasia_consumida !== undefined) && (
-                                  <small>
-                                    Dem. mala {formatNumber(demasiaJuego.malaUsada)} / disp. {formatNumber(demasiaJuego.buenaDisponible)}
-                                  </small>
-                                )}
-                                {demasiaJuego.buenaExtra > 0 && (
-                                  <small>Dem. buena {formatNumber(demasiaJuego.buenaExtra)}</small>
+                                  <div className="operator-plate-demasia-left">
+                                    <span>Demasia disponible</span>
+                                    <strong>{formatNumber(demasiaJuego.buenaDisponible)}</strong>
+                                  </div>
                                 )}
                               </div>
                               <div className="operator-plate-actions">
@@ -939,7 +930,6 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                       <p>Elige el par desde el desplegable para ver TIRA y RETIRA antes de iniciar.</p>
                     </div>
                   )}
-                </div>
               </div>
             ) : isAcabados ? (
               <div className="operator-finish-route-detail">
