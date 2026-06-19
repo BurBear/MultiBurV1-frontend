@@ -43,6 +43,21 @@ function getProduccionStatus(produccion) {
   return produccion.estado || 'PENDIENTE';
 }
 
+function getJuegosImpresion(produccion) {
+  return asArray(produccion?.juegos_impresion);
+}
+
+function procesoTieneJuegosImpresion(produccion, proceso) {
+  const juegos = getJuegosImpresion(produccion);
+  return juegos.some((juego) => String(juego.proceso_id) === String(proceso.id));
+}
+
+function getJuegoProcesoLabel(juego) {
+  if (juego.codigo_lado) return juego.codigo_lado;
+  if (juego.lado) return juego.lado;
+  return 'JUEGO DE PLACAS';
+}
+
 function formatDuration(minutes) {
   const total = Number(minutes || 0);
   const hours = Math.floor(total / 60);
@@ -156,14 +171,21 @@ export default function Dashboard() {
   const resumen = useMemo(() => {
     const producciones = data.ordenesProduccion;
     const procesos = producciones.flatMap((produccion) => asArray(produccion.procesos));
-    const activeProcesses = procesos.filter((proceso) => proceso.estado === ACTIVE_PROCESS_STATE);
+    const activeProcesses = producciones.flatMap((produccion) => (
+      asArray(produccion.procesos)
+        .filter((proceso) => proceso.estado === ACTIVE_PROCESS_STATE)
+        .filter((proceso) => !procesoTieneJuegosImpresion(produccion, proceso))
+    ));
+    const activeJuegos = producciones.flatMap((produccion) => (
+      getJuegosImpresion(produccion).filter((juego) => juego.estado === ACTIVE_PROCESS_STATE)
+    ));
     const incidenciasAbiertas = data.incidencias.filter((incidencia) => incidencia.estado !== 'RESUELTA').length;
 
     return {
       clientesActivos: data.clientes.filter((item) => item.estado !== 'INACTIVO').length,
       ordenesTrabajo: data.ordenesTrabajo.length,
       ordenesProduccion: producciones.length,
-      operadoresActivos: activeProcesses.length,
+      operadoresActivos: activeProcesses.length + activeJuegos.length,
       procesosPausados: procesos.filter((proceso) => proceso.estado === 'PAUSADO').length,
       incidenciasAbiertas,
       produccionesServicio: producciones.filter((item) => item.tipo_origen === 'SERVICIO' || !item.orden_trabajo_id).length,
@@ -179,9 +201,10 @@ export default function Dashboard() {
     const produccionesById = indexById(data.ordenesProduccion);
     const now = new Date();
 
-    const actividad = data.ordenesProduccion.flatMap((produccion) => (
+    const actividadProcesos = data.ordenesProduccion.flatMap((produccion) => (
       asArray(produccion.procesos)
         .filter((proceso) => proceso.estado === ACTIVE_PROCESS_STATE && proceso.operador_id)
+        .filter((proceso) => !procesoTieneJuegosImpresion(produccion, proceso))
         .map((proceso) => ({
           id: `${produccion.id}-${proceso.id}`,
           operador: proceso.operador_nombre || `Usuario #${proceso.operador_id}`,
@@ -193,7 +216,26 @@ export default function Dashboard() {
           maquina: maquinasById[produccion.maquina_id]?.nombre || 'Sin maquina',
           inicio: proceso.fecha_inicio,
         }))
-    )).sort((a, b) => getApiDateTimeValue(a.inicio) - getApiDateTimeValue(b.inicio));
+    ));
+
+    const actividadJuegos = data.ordenesProduccion.flatMap((produccion) => (
+      getJuegosImpresion(produccion)
+        .filter((juego) => juego.estado === ACTIVE_PROCESS_STATE && juego.operador_id)
+        .map((juego) => ({
+          id: `${produccion.id}-juego-${juego.id}`,
+          operador: juego.operador_nombre || `Usuario #${juego.operador_id}`,
+          rol: 'IMPRESION',
+          proceso: getJuegoProcesoLabel(juego),
+          orden: formatOrderCode('OP', produccion.codigo, produccion.id),
+          trabajo: produccion.descripcion || 'Sin descripcion',
+          cliente: clientesById[produccion.cliente_id]?.nombre || `Cliente #${produccion.cliente_id}`,
+          maquina: maquinasById[produccion.maquina_id]?.nombre || 'Sin maquina',
+          inicio: juego.fecha_inicio,
+        }))
+    ));
+
+    const actividad = [...actividadProcesos, ...actividadJuegos]
+      .sort((a, b) => getApiDateTimeValue(a.inicio) - getApiDateTimeValue(b.inicio));
 
     const estadosProduccion = data.ordenesProduccion.reduce((acc, produccion) => {
       const status = getProduccionStatus(produccion);
