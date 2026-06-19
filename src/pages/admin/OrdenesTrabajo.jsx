@@ -80,7 +80,8 @@ function produccionStarted(produccion) {
 
 function canChangeProduccion(produccion) {
   return produccion?.estado === 'PENDIENTE'
-    && !asArray(produccion.procesos).some((proceso) => proceso.estado !== 'PENDIENTE');
+    && !asArray(produccion.procesos).some((proceso) => proceso.estado !== 'PENDIENTE')
+    && !asArray(produccion.juegos_impresion).some((juego) => juego.estado !== 'PENDIENTE');
 }
 
 function canChangeOrdenTrabajo(orden) {
@@ -462,6 +463,7 @@ export default function OrdenesTrabajo() {
   const [selectedProduccion, setSelectedProduccion] = useState(null);
   const [editProduccionTarget, setEditProduccionTarget] = useState(null);
   const [anularProduccionTarget, setAnularProduccionTarget] = useState(null);
+  const [duplicarProduccionTarget, setDuplicarProduccionTarget] = useState(null);
   const [produccionDetailLoading, setProduccionDetailLoading] = useState(false);
   const [produccionDetailError, setProduccionDetailError] = useState('');
   const [printProduccionTarget, setPrintProduccionTarget] = useState(null);
@@ -580,6 +582,25 @@ export default function OrdenesTrabajo() {
       }
     } catch (err) {
       setActionError(err.message || 'No se pudo anular la orden de produccion.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDuplicarProduccion = async () => {
+    if (!duplicarProduccionTarget) return;
+    const target = duplicarProduccionTarget;
+    setActionLoading(true);
+    setActionError('');
+    try {
+      await ordenesProduccionService.duplicarOrdenProduccion(target.id);
+      setDuplicarProduccionTarget(null);
+      await loadInitial();
+      if (selected) {
+        await loadDetail(selected);
+      }
+    } catch (err) {
+      setActionError(err.message || 'No se pudo duplicar la orden de produccion.');
     } finally {
       setActionLoading(false);
     }
@@ -707,6 +728,7 @@ export default function OrdenesTrabajo() {
     setShowDetailModal(false);
     setShowOrdenCompraModal(false);
     setSelectedProduccion(null);
+    setDuplicarProduccionTarget(null);
     setProduccionDetailError('');
     setPrintProduccionTarget(null);
     setSelected(null);
@@ -949,6 +971,16 @@ export default function OrdenesTrabajo() {
                               disabled={!editable}
                               title={disabledTitle}
                             />
+                            <ActionIconButton
+                              icon="copy"
+                              label="Duplicar orden de produccion"
+                              onClick={() => {
+                                setActionError('');
+                                setDuplicarProduccionTarget(row);
+                              }}
+                              disabled={!editable}
+                              title={editable ? 'Duplicar orden de produccion' : 'Solo se puede duplicar una OP pendiente y sin procesos iniciados.'}
+                            />
                           </div>
                         );
                       },
@@ -1077,6 +1109,22 @@ export default function OrdenesTrabajo() {
             setActionError('');
           }}
           onConfirm={handleAnularProduccion}
+          loading={actionLoading}
+        />
+      )}
+
+      {duplicarProduccionTarget && (
+        <ConfirmDialog
+          title="Duplicar orden de produccion"
+          message={
+            actionError
+              || `Se creara una copia de ${formatOrderCode('OP', duplicarProduccionTarget.codigo, duplicarProduccionTarget.id)} dentro de ${formatOrderCode('OT', selected.codigo, selected.id)}. La descripcion recibira el siguiente sufijo disponible, hasta un maximo de 5 copias.`
+          }
+          onCancel={() => {
+            setDuplicarProduccionTarget(null);
+            setActionError('');
+          }}
+          onConfirm={handleDuplicarProduccion}
           loading={actionLoading}
         />
       )}

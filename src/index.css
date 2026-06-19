@@ -2651,15 +2651,18 @@ textarea {
 }
 
 .operator-order-row {
-  align-items: stretch;
+  align-items: start;
   background: rgba(2, 6, 23, 0.38);
   border: 1px solid var(--border);
   border-left: 4px solid rgba(56, 189, 248, 0.62);
   border-radius: 8px;
   display: grid;
   gap: 1rem;
+  grid-auto-rows: auto;
   grid-template-columns: minmax(260px, 0.95fr) minmax(420px, 1.45fr) 190px;
-  min-height: 156px;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
   padding: 1rem;
 }
 
@@ -2670,6 +2673,7 @@ textarea {
 }
 
 .operator-order-main {
+  align-content: start;
   display: grid;
   gap: 0.75rem;
   min-width: 0;
@@ -2728,7 +2732,7 @@ textarea {
 }
 
 .operator-order-description {
-  align-self: end;
+  align-self: start;
   display: grid;
   gap: 0.55rem;
 }
@@ -2789,7 +2793,7 @@ textarea {
   align-content: start;
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   min-width: 0;
 }
 

@@ -23,7 +23,8 @@ function asArray(data) {
 }
 
 function hasStartedProcesses(produccion) {
-  return asArray(produccion.procesos).some((proceso) => proceso.estado !== 'PENDIENTE');
+  return asArray(produccion.procesos).some((proceso) => proceso.estado !== 'PENDIENTE')
+    || asArray(produccion.juegos_impresion).some((juego) => juego.estado !== 'PENDIENTE');
 }
 
 function canChangeProduccion(produccion) {
@@ -47,6 +48,7 @@ export default function OrdenesProduccion() {
   const [printLoadingId, setPrintLoadingId] = useState('');
   const [editTarget, setEditTarget] = useState(null);
   const [anularTarget, setAnularTarget] = useState(null);
+  const [duplicateTarget, setDuplicateTarget] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState('');
 
@@ -174,6 +176,21 @@ export default function OrdenesProduccion() {
     }
   };
 
+  const handleDuplicarProduccion = async () => {
+    if (!duplicateTarget) return;
+    setActionLoading(true);
+    setActionError('');
+    try {
+      await ordenesProduccionService.duplicarOrdenProduccion(duplicateTarget.id);
+      setDuplicateTarget(null);
+      await loadData();
+    } catch (err) {
+      setActionError(err.message || 'No se pudo duplicar la orden de produccion.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getOrdenTrabajoCodigo = (produccion) => {
     if (!produccion.orden_trabajo_id) return '-';
     const ordenTrabajo = ordenesTrabajo.find((orden) => String(orden.id) === String(produccion.orden_trabajo_id));
@@ -216,6 +233,16 @@ export default function OrdenesProduccion() {
               onClick={() => setEditTarget(row)}
               disabled={!editable}
               title={disabledTitle}
+            />
+            <ActionIconButton
+              icon="copy"
+              label="Duplicar orden de produccion"
+              onClick={() => {
+                setActionError('');
+                setDuplicateTarget(row);
+              }}
+              disabled={!editable}
+              title={editable ? 'Duplicar orden de produccion' : 'Solo se puede duplicar una OP pendiente y sin procesos iniciados.'}
             />
           </div>
         );
@@ -312,6 +339,22 @@ export default function OrdenesProduccion() {
             setActionError('');
           }}
           onConfirm={handleAnularProduccion}
+          loading={actionLoading}
+        />
+      )}
+
+      {duplicateTarget && (
+        <ConfirmDialog
+          title="Duplicar orden de produccion"
+          message={
+            actionError
+              || `Se creara una nueva copia de ${formatOrderCode('OP', duplicateTarget.codigo, duplicateTarget.id)} con el mismo contenido. La descripcion recibira el siguiente sufijo disponible, por ejemplo (1), hasta un maximo de 5 copias.`
+          }
+          onCancel={() => {
+            setDuplicateTarget(null);
+            setActionError('');
+          }}
+          onConfirm={handleDuplicarProduccion}
           loading={actionLoading}
         />
       )}
