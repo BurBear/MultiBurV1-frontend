@@ -97,6 +97,16 @@ function groupJuegosByPair(juegos) {
   }));
 }
 
+function getPairStatus(pairJuegos, userId) {
+  const juegos = asArray(pairJuegos);
+  if (juegos.some((juego) => isActiveJuego(juego) && sameId(juego.operador_id, userId))) return 'TRABAJO ACTUAL';
+  if (juegos.some((juego) => isActiveJuego(juego))) return 'EN PROCESO';
+  if (juegos.length > 0 && juegos.every((juego) => juego.estado === 'TERMINADO')) return 'TERMINADO';
+  if (juegos.some((juego) => juego.estado === 'BLOQUEADO')) return 'BLOQUEADO';
+  if (juegos.some((juego) => juego.estado === 'PENDIENTE')) return 'DISPONIBLE';
+  return juegos[0]?.estado || 'PENDIENTE';
+}
+
 function getRowEstado(row) {
   if (!row?.isJuegosImpresion) return row?.proceso?.estado;
   const juegos = asArray(row.juegos);
@@ -281,6 +291,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
   const [incidenciaCloseTarget, setIncidenciaCloseTarget] = React.useState(null);
   const [cierreCantidades, setCierreCantidades] = React.useState({ cantidad_buena: '', cantidad_mala: '' });
   const [cierreErrors, setCierreErrors] = React.useState(emptyCierreErrors);
+  const [selectedPlatePair, setSelectedPlatePair] = React.useState(null);
 
   const catalogMaps = React.useMemo(() => ({
     clientes: indexById(catalogs.clientes),
@@ -486,6 +497,8 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
   const openOrderDetail = (row, previewOnly = false) => {
     setCierreCantidades({ cantidad_buena: '', cantidad_mala: '' });
     setCierreErrors(emptyCierreErrors());
+    setSelectedPlatePair(null);
+    setIncidenciasOrden([]);
     setSelectedRow({ ...row, previewOnly });
     loadIncidenciasOrden(row.produccion.id);
   };
@@ -700,9 +713,17 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const hasOpenIncidencia = incidenciasAbiertasProceso.length > 0;
     const actionsLocked = incidenciasLoading || hasOpenIncidencia || row.isLocked;
     const canReport = (isJuegosImpresion ? juegoActual?.estado === 'PAUSADO' : puedeReportarIncidencia(proceso)) && !actionsLocked;
-    const closeDisabled = !previewOnly && (proceso.estado === 'EN_PROCESO' || juegoActual?.estado === 'EN_PROCESO');
+    const closeDisabled = !previewOnly && (
+      isJuegosImpresion
+        ? juegoActual?.estado === 'EN_PROCESO'
+        : proceso.estado === 'EN_PROCESO' && sameId(proceso.operador_id, user?.id)
+    );
     const necesitaCantidades = requiereCantidadesCierre(proceso);
     const cantidadPlanificada = Number(produccion.cantidad || 0) + Number(produccion.demasia || 0);
+    const pairGroups = isJuegosImpresion ? groupJuegosByPair(juegos) : [];
+    const currentPairKey = juegoActual?.grupo_par ? String(juegoActual.grupo_par) : null;
+    const selectedPairKey = currentPairKey || selectedPlatePair;
+    const selectedPair = pairGroups.find((pair) => String(pair.grupo) === String(selectedPairKey));
 
     const finalizarProceso = (targetJuego = null) => {
       if (necesitaCantidades) {
@@ -838,12 +859,36 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             {isJuegosImpresion ? (
               <div className="operator-finish-route-detail operator-plate-route-detail">
                 <span>Placas disponibles</span>
-                <div className="operator-plate-pair-grid">
-                  {groupJuegosByPair(juegos).map((pair) => (
-                    <div key={pair.grupo} className="operator-plate-pair-card">
-                      <span>Par {pair.grupo}</span>
+                <div className="operator-plate-selector-layout">
+                  <div className="operator-plate-pair-selector" aria-label="Seleccionar par de placas">
+                    {pairGroups.map((pair) => {
+                      const pairStatus = getPairStatus(pair.juegos, user?.id);
+                      const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
+                      const pairHasAvailable = pair.juegos.some((juego) => canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO');
+                      const pairSelectable = previewOnly || pairHasCurrent || pairHasAvailable;
+                      const pairSelected = selectedPair && String(selectedPair.grupo) === String(pair.grupo);
+                      const pairLabel = `${pair.grupo} ${produccion.tipo_impresion || 'T+R'}`;
+
+                      return (
+                        <button
+                          key={pair.grupo}
+                          type="button"
+                          className={`operator-plate-pair-option ${pairSelected ? 'operator-plate-pair-option-active' : ''}`}
+                          onClick={() => setSelectedPlatePair(String(pair.grupo))}
+                          disabled={!pairSelectable}
+                        >
+                          <strong>{pairLabel}</strong>
+                          <small>{pairStatus}</small>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedPair ? (
+                    <div className="operator-plate-selected-card">
+                      <span>Par {selectedPair.grupo} seleccionado</span>
                       <div>
-                        {pair.juegos.map((juego) => {
+                        {selectedPair.juegos.map((juego) => {
                           const isCurrentJuego = juegoActual?.id === juego.id;
                           const canStartJuego = canUseJuego(juego, user?.id) && !actionsLocked && puedeIniciar;
                           const demasiaJuego = getDemasiaJuegoSummary(juego, produccion);
@@ -887,7 +932,12 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                         })}
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="operator-plate-selected-empty">
+                      <strong>Selecciona un par disponible</strong>
+                      <p>Elige un par para ver TIRA y RETIRA antes de iniciar.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : isAcabados ? (
@@ -944,8 +994,8 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                 <div className="operator-detail-actions">
                   {isJuegosImpresion ? (
                     <>
-                      {!juegoActual && (
-                        <p className="muted">Selecciona una placa disponible para iniciar el trabajo.</p>
+                      {!juegoActual && !selectedPair && (
+                        <p className="muted">Selecciona un par disponible para iniciar el trabajo.</p>
                       )}
 
                       {juegoActual?.estado === 'EN_PROCESO' && (
@@ -1105,56 +1155,53 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             )}
           </section>
 
-          <section className="operator-detail-section operator-incidencias-section">
-            <div className="operator-incidencias-heading">
-              <div>
-                <h3>Incidencias</h3>
-                <p>{incidenciasLoading ? 'Cargando...' : `${incidenciasOrden.length} registradas`}</p>
+          {incidenciasOrden.length > 0 && (
+            <section className="operator-detail-section operator-incidencias-section">
+              <div className="operator-incidencias-heading">
+                <div>
+                  <h3>Incidencias</h3>
+                  <p>{incidenciasLoading ? 'Cargando...' : `${incidenciasOrden.length} registradas`}</p>
+                </div>
+                <Button
+                  className="icon-button"
+                  variant="outline"
+                  onClick={() => loadIncidenciasOrden(produccion.id)}
+                  disabled={incidenciasLoading}
+                  aria-label="Refrescar incidencias"
+                  title="Refrescar incidencias"
+                >
+                  <RefreshIcon />
+                </Button>
               </div>
-              <Button
-                className="icon-button"
-                variant="outline"
-                onClick={() => loadIncidenciasOrden(produccion.id)}
-                disabled={incidenciasLoading}
-                aria-label="Refrescar incidencias"
-                title="Refrescar incidencias"
-              >
-                <RefreshIcon />
-              </Button>
-            </div>
 
-            {incidenciasLoading ? (
-              <p className="muted">Cargando incidencias...</p>
-            ) : incidenciasOrden.length === 0 ? (
-              <div className="empty-state compact">
-                <strong>Sin incidencias</strong>
-                <p>No hay incidencias registradas para esta orden de produccion.</p>
-              </div>
-            ) : (
-              <div className="operator-incidencias-list">
-                {incidenciasOrden.map((incidencia) => (
-                  <article key={incidencia.id} className="operator-incidencia-item">
-                    <div>
-                      <strong>{formatIncidenciaValue(incidencia.tipo)}</strong>
-                      <span>{incidencia.descripcion}</span>
-                      <small>Creada: {formatDateTime(incidencia.fecha_registro)}</small>
-                    </div>
-                    <div className="operator-incidencia-badges">
-                      <IncidenciaEstadoBadge value={incidencia.prioridad} type="prioridad" />
-                      <IncidenciaEstadoBadge value={incidencia.estado} />
-                    </div>
-                    {!previewOnly && incidencia.estado !== 'RESUELTA' && (
-                      <div className="operator-incidencia-actions">
-                        <Button size="sm" variant="success" onClick={() => setIncidenciaCloseTarget(incidencia)}>
-                          Cerrar
-                        </Button>
+              {incidenciasLoading ? (
+                <p className="muted">Cargando incidencias...</p>
+              ) : (
+                <div className="operator-incidencias-list">
+                  {incidenciasOrden.map((incidencia) => (
+                    <article key={incidencia.id} className="operator-incidencia-item">
+                      <div>
+                        <strong>{formatIncidenciaValue(incidencia.tipo)}</strong>
+                        <span>{incidencia.descripcion}</span>
+                        <small>Creada: {formatDateTime(incidencia.fecha_registro)}</small>
                       </div>
-                    )}
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+                      <div className="operator-incidencia-badges">
+                        <IncidenciaEstadoBadge value={incidencia.prioridad} type="prioridad" />
+                        <IncidenciaEstadoBadge value={incidencia.estado} />
+                      </div>
+                      {!previewOnly && incidencia.estado !== 'RESUELTA' && (
+                        <div className="operator-incidencia-actions">
+                          <Button size="sm" variant="success" onClick={() => setIncidenciaCloseTarget(incidencia)}>
+                            Cerrar
+                          </Button>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </Modal>
     );
