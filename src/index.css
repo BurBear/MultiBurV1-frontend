@@ -2089,6 +2089,37 @@ textarea {
   gap: 0.5rem;
 }
 
+.production-plate-games-list {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.production-plate-games-list > div {
+  background: rgba(15, 23, 42, 0.58);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.75rem;
+}
+
+.production-plate-games-list > div > div {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.production-plate-games-list strong {
+  font-size: 0.95rem;
+}
+
+.production-plate-games-list span,
+.production-plate-games-list small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .production-detail-process-table {
   max-height: 280px;
 }
@@ -2915,6 +2946,40 @@ textarea {
   box-shadow: inset 3px 0 0 rgba(56, 189, 248, 0.95);
 }
 
+.operator-plate-route-detail > div > div {
+  align-items: stretch;
+  gap: 0.7rem;
+}
+
+.operator-plate-route-detail > div > div > div:first-child {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.operator-plate-route-detail strong {
+  overflow-wrap: anywhere;
+}
+
+.operator-plate-route-detail small {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.operator-plate-actions {
+  align-content: start;
+  display: grid;
+  gap: 0.45rem;
+  justify-items: end;
+  min-width: 126px;
+}
+
+.operator-plate-actions .btn {
+  min-height: 34px;
+  width: 100%;
+}
+
 .operator-detail-actions {
   display: grid;
   gap: 0.75rem;
@@ -3160,6 +3225,52 @@ textarea {
   color: var(--text-muted);
   font-size: 0.84rem;
   line-height: 1.35;
+}
+
+.plate-games-summary {
+  background: rgba(2, 6, 23, 0.34);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(170px, 0.45fr) minmax(0, 1fr);
+  padding: 0.85rem;
+}
+
+.plate-games-help {
+  align-content: start;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.plate-games-help span {
+  color: #bbf7d0;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.plate-games-help p {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.plate-games-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.plate-games-preview strong {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.32);
+  border-radius: 999px;
+  color: #bbf7d0;
+  font-size: 0.74rem;
+  padding: 0.32rem 0.5rem;
 }
 
 .finish-route-modal {

@@ -72,6 +72,50 @@ function buildPredictionPayload(values) {
   return payload;
 }
 
+function usesPlateGames(tipoImpresion) {
+  return ['TIRA', 'T/R', 'T+R'].includes(tipoImpresion);
+}
+
+function usesPairedPlateGames(tipoImpresion) {
+  return ['T/R', 'T+R'].includes(tipoImpresion);
+}
+
+function defaultPlateGames(tipoImpresion) {
+  if (usesPairedPlateGames(tipoImpresion)) return 2;
+  if (tipoImpresion === 'TIRA') return 1;
+  return '';
+}
+
+function buildPlateGamesPreview(tipoImpresion, cantidadJuegos) {
+  const total = Number(cantidadJuegos || 0);
+  if (!usesPlateGames(tipoImpresion) || !Number.isInteger(total) || total <= 0) return [];
+
+  if (usesPairedPlateGames(tipoImpresion)) {
+    const pairs = Math.floor(total / 2);
+    return Array.from({ length: pairs }, (_, index) => ({
+      id: index + 1,
+      label: `TIRA ${index + 1}A - RETIRA ${index + 1}B`,
+    }));
+  }
+
+  return Array.from({ length: total }, (_, index) => ({
+    id: index + 1,
+    label: `TIRA ${index + 1}A`,
+  }));
+}
+
+function validatePlateGames(nextErrors, values) {
+  if (!usesPlateGames(values.tipo_impresion)) return;
+  const value = Number(values.cantidad_juegos_placas);
+  if (!Number.isInteger(value) || value <= 0) {
+    nextErrors.cantidad_juegos_placas = 'Ingresa una cantidad valida de juegos de placas.';
+    return;
+  }
+  if (usesPairedPlateGames(values.tipo_impresion) && value % 2 !== 0) {
+    nextErrors.cantidad_juegos_placas = 'Para T/R o T+R la cantidad debe ser par.';
+  }
+}
+
 function AcabadosRouteModal({ rutaAcabados, onToggle, onMove, onClear, onClose, onPlastificadoModeChange }) {
   const plastificadoValue = rutaAcabados.find((acabado) => isPlastificadoProcess(acabado));
   const plastificadoMode = PLASTIFICADO_MODE_OPTIONS.some((option) => option.value === plastificadoValue)
@@ -183,6 +227,7 @@ export default function OrdenProduccionFormModal({
     maquina_id: '',
     modo_color: 'F/C',
     tipo_impresion: '',
+    cantidad_juegos_placas: '',
     tipo_servicio: 'COMPLETO',
     procesos_personalizados: [],
     ruta_acabados: [],
@@ -201,10 +246,32 @@ export default function OrdenProduccionFormModal({
   const selectedCliente = clientes.find((cliente) => cliente.id === Number(values.cliente_id));
   const selectedMaterial = materiales.find((material) => material.id === Number(values.material_id));
   const requiereRutaAcabados = serviceIncludesAcabados(values.tipo_servicio, values.procesos_personalizados);
+  const usaJuegosPlacas = usesPlateGames(values.tipo_impresion);
+  const juegosPlacasPreview = buildPlateGamesPreview(values.tipo_impresion, values.cantidad_juegos_placas);
 
   const setValue = (name, value) => {
     setValues((current) => ({ ...current, [name]: value }));
     setErrors((current) => ({ ...current, [name]: '' }));
+    setPredictionError('');
+  };
+
+  const setTipoImpresion = (value) => {
+    setValues((current) => {
+      const currentCount = Number(current.cantidad_juegos_placas);
+      const shouldResetCount = !usesPlateGames(value)
+        || !Number.isInteger(currentCount)
+        || currentCount <= 0
+        || (usesPairedPlateGames(value) && currentCount % 2 !== 0);
+
+      return {
+        ...current,
+        tipo_impresion: value,
+        cantidad_juegos_placas: usesPlateGames(value)
+          ? (shouldResetCount ? defaultPlateGames(value) : current.cantidad_juegos_placas)
+          : '',
+      };
+    });
+    setErrors((current) => ({ ...current, tipo_impresion: '', cantidad_juegos_placas: '' }));
     setPredictionError('');
   };
 
@@ -274,6 +341,7 @@ export default function OrdenProduccionFormModal({
     if (!values.formato_id) nextErrors.formato_id = 'Selecciona un formato.';
     if (!values.maquina_id) nextErrors.maquina_id = 'Selecciona una maquina sugerida.';
     if (!values.tipo_impresion) nextErrors.tipo_impresion = 'Selecciona el tipo de impresion.';
+    validatePlateGames(nextErrors, values);
     if (values.tipo_servicio === 'PERSONALIZADO' && values.procesos_personalizados.length === 0) {
       nextErrors.procesos_personalizados = 'Selecciona al menos un proceso personalizado.';
     }
@@ -302,6 +370,7 @@ export default function OrdenProduccionFormModal({
     if (values.material_id) payload.material_id = Number(values.material_id);
     if (values.formato_id) payload.formato_id = Number(values.formato_id);
     if (values.maquina_id) payload.maquina_id = Number(values.maquina_id);
+    if (usaJuegosPlacas) payload.cantidad_juegos_placas = Number(values.cantidad_juegos_placas);
     if (values.observaciones.trim()) payload.observaciones = values.observaciones.trim();
     if (values.tipo_servicio === 'PERSONALIZADO') {
       payload.procesos_personalizados = values.procesos_personalizados;
@@ -453,7 +522,7 @@ export default function OrdenProduccionFormModal({
                 <option value="1 COLOR">1 COLOR</option>
                 <option value="PERSONALIZADO">PERSONALIZADO</option>
               </Select>
-              <Select label="Tipo de impresion" name="tipo_impresion" value={values.tipo_impresion} onChange={(event) => setValue('tipo_impresion', event.target.value)} error={errors.tipo_impresion}>
+              <Select label="Tipo de impresion" name="tipo_impresion" value={values.tipo_impresion} onChange={(event) => setTipoImpresion(event.target.value)} error={errors.tipo_impresion}>
                 <option value="">Selecciona tipo</option>
                 <option value="TIRA">TIRA</option>
                 <option value="T/R">T/R</option>
@@ -461,6 +530,37 @@ export default function OrdenProduccionFormModal({
                 <option value="DOBLE PINZA">DOBLE PINZA</option>
               </Select>
             </div>
+
+            {usaJuegosPlacas && (
+              <div className="plate-games-summary">
+                <Input
+                  label="Juegos de placas"
+                  name="cantidad_juegos_placas"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={values.cantidad_juegos_placas}
+                  onChange={(event) => setValue('cantidad_juegos_placas', event.target.value)}
+                  error={errors.cantidad_juegos_placas}
+                  required
+                />
+                <div className="plate-games-help">
+                  <span>Control por placas</span>
+                  <p>
+                    {usesPairedPlateGames(values.tipo_impresion)
+                      ? 'Para T/R o T+R ingresa un numero par. Ej: 6 juegos genera 3 tiras y 3 retiras bloqueadas por par.'
+                      : 'Para TIRA se genera una placa independiente por cada juego configurado.'}
+                  </p>
+                  {juegosPlacasPreview.length > 0 && (
+                    <div className="plate-games-preview">
+                      {juegosPlacasPreview.map((juego) => (
+                        <strong key={juego.id}>{juego.label}</strong>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <Select label="Tipo de servicio" name="tipo_servicio" value={values.tipo_servicio} onChange={(event) => setValue('tipo_servicio', event.target.value)}>
               <option value="COMPLETO">COMPLETO</option>
@@ -571,7 +671,7 @@ export default function OrdenProduccionFormModal({
                     {prediction.desglose.map((item) => (
                       <div key={item.tipo_proceso}>
                         <strong>{item.tipo_proceso}</strong>
-                        <span>{formatDuration(item.duracion_estimada_minutos)} · {item.confianza} · {item.muestra_historica} historicos</span>
+                        <span>{formatDuration(item.duracion_estimada_minutos)} - {item.confianza} - {item.muestra_historica} historicos</span>
                       </div>
                     ))}
                   </div>

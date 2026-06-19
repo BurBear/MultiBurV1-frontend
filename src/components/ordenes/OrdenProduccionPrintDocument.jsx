@@ -51,6 +51,10 @@ export default function OrdenProduccionPrintDocument({
   const cliente = getCliente(clientes, produccion.cliente_id);
   const procesoActual = getProcesoActual(produccion);
   const acabados = getAcabados(produccion);
+  const juegosImpresion = asArray(produccion.juegos_impresion);
+  const juegosImpresionTexto = juegosImpresion.length
+    ? juegosImpresion.map((juego) => juego.codigo_lado).join(' | ')
+    : '-';
   const cantidadDemasia = produccion.demasia
     ? `${formatNumber(produccion.cantidad)} + ${formatNumber(produccion.demasia)}`
     : formatNumber(produccion.cantidad);
@@ -137,8 +141,16 @@ export default function OrdenProduccionPrintDocument({
             <strong>{cantidadDemasia}</strong>
           </div>
           <div>
+            <span>Juegos de placas</span>
+            <strong>{juegosImpresion.length || '-'}</strong>
+          </div>
+          <div>
             <span>Codigo interno</span>
             <strong>{formatOrderCode('OP', produccion.codigo, produccion.id)}</strong>
+          </div>
+          <div className="production-print-wide">
+            <span>Detalle de placas</span>
+            <strong>{juegosImpresionTexto}</strong>
           </div>
           <div className="production-print-wide">
             <span>Procesos acabados</span>

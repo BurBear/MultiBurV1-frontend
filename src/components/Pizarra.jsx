@@ -46,6 +46,32 @@ function isActiveProcess(proceso) {
   return ['EN_PROCESO', 'PAUSADO'].includes(proceso?.estado);
 }
 
+function isActiveJuego(juego) {
+  return ['EN_PROCESO', 'PAUSADO'].includes(juego?.estado);
+}
+
+function getJuegosImpresion(produccion) {
+  return asArray(produccion?.juegos_impresion);
+}
+
+function getCurrentJuego(juegos, userId) {
+  return asArray(juegos).find((juego) => isActiveJuego(juego) && sameId(juego.operador_id, userId)) || null;
+}
+
+function canUseJuego(juego, userId) {
+  if (!juego) return false;
+  if (juego.estado === 'PENDIENTE') return true;
+  return juego.estado === 'BLOQUEADO' && sameId(juego.operador_id, userId);
+}
+
+function getRowEstado(row) {
+  if (!row?.isJuegosImpresion) return row?.proceso?.estado;
+  const juegos = asArray(row.juegos);
+  if (juegos.length > 0 && juegos.every((juego) => juego.estado === 'TERMINADO')) return 'TERMINADO';
+  if (row.juegoActual) return row.juegoActual.estado;
+  return row.proceso?.estado || 'PENDIENTE';
+}
+
 function getProcesosByArea(procesos, area) {
   return asArray(procesos).filter((proceso) => getProcessArea(proceso) === area);
 }
@@ -59,6 +85,27 @@ function getOperatorAreaRows(produccion, area) {
     .filter(({ proceso }) => getProcessArea(proceso) === area);
 
   if (areaProcesos.length === 0) return [];
+
+  if (area === 'IMPRESION') {
+    const juegos = getJuegosImpresion(produccion);
+    const impresionProceso = areaProcesos.find(({ proceso }) => getProcessArea(proceso) === 'IMPRESION');
+    if (juegos.length > 0 && impresionProceso) {
+      const procesoAnterior = impresionProceso.procesoIndex > 0 ? procesos[impresionProceso.procesoIndex - 1] : null;
+      const puedeIniciar = !procesoAnterior || procesoAnterior.estado === 'TERMINADO';
+
+      return [{
+        id: `${produccion.id}-${impresionProceso.proceso.id}-juegos`,
+        produccion,
+        proceso: impresionProceso.proceso,
+        procesos,
+        juegos,
+        procesoAnterior,
+        puedeIniciar,
+        isJuegosImpresion: true,
+        progress: getProgress(procesos),
+      }];
+    }
+  }
 
   const currentAreaProceso = areaProcesos.find(({ proceso }) => isActiveProcess(proceso));
   const nextAreaProceso = areaProcesos.find(({ proceso }) => proceso.estado !== 'TERMINADO');
@@ -105,13 +152,17 @@ function getRowsForMenu(rows, menuId) {
   if (menuId === 'DISPONIBLES') {
     return rows.filter((row) => (
       row.isTrabajoActual
-      || (row.proceso.estado === 'PENDIENTE' && row.puedeIniciar && !row.isLocked)
+      || (
+        row.isJuegosImpresion
+          ? row.puedeIniciar && getRowEstado(row) !== 'TERMINADO' && !row.isLocked
+          : row.proceso.estado === 'PENDIENTE' && row.puedeIniciar && !row.isLocked
+      )
     ));
   }
   if (menuId === 'BLOQUEADAS') {
-    return rows.filter((row) => row.isLocked || (row.proceso.estado === 'PENDIENTE' && !row.puedeIniciar));
+    return rows.filter((row) => row.isLocked || (getRowEstado(row) === 'PENDIENTE' && !row.puedeIniciar));
   }
-  return rows.filter((row) => row.proceso.estado === menuId);
+  return rows.filter((row) => getRowEstado(row) === menuId);
 }
 
 function RefreshIcon() {
@@ -209,11 +260,33 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const baseRows = ordenes.flatMap((produccion) => getOperatorAreaRows(produccion, area));
 
     const trabajosActuales = baseRows.filter((row) => (
-      isActiveProcess(row.proceso) && sameId(row.proceso.operador_id, user?.id)
+      row.isJuegosImpresion
+        ? Boolean(getCurrentJuego(row.juegos, user?.id))
+        : isActiveProcess(row.proceso) && sameId(row.proceso.operador_id, user?.id)
     ));
     const tieneTrabajoActual = trabajosActuales.length > 0;
 
     return baseRows.map((row) => {
+      if (row.isJuegosImpresion) {
+        const juegos = asArray(row.juegos);
+        const juegoActual = getCurrentJuego(juegos, user?.id);
+        const allDone = juegos.length > 0 && juegos.every((juego) => juego.estado === 'TERMINADO');
+        const hasAvailableForUser = juegos.some((juego) => canUseJuego(juego, user?.id));
+        const bloqueadoPorTrabajoActual = tieneTrabajoActual
+          && !trabajosActuales.some((trabajo) => trabajo.id === row.id)
+          && !allDone;
+        const controladoPorOtroOperador = !juegoActual && !hasAvailableForUser && !allDone;
+
+        return {
+          ...row,
+          juegoActual,
+          isTrabajoActual: Boolean(juegoActual),
+          controladoPorOtroOperador,
+          bloqueadoPorTrabajoActual,
+          isLocked: controladoPorOtroOperador || bloqueadoPorTrabajoActual,
+        };
+      }
+
       const controladoPorOtroOperador = isActiveProcess(row.proceso)
         && row.proceso.operador_id
         && !sameId(row.proceso.operador_id, user?.id);
@@ -310,6 +383,52 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     }
   };
 
+  const updateSelectedRowWithProduccion = (current, produccionActualizada) => {
+    if (!current || current.produccion.id !== produccionActualizada.id) return current;
+    const procesos = asArray(produccionActualizada.procesos);
+    const procesoActualizado = procesos.find((proceso) => proceso.id === current.proceso.id) || current.proceso;
+    const juegos = getJuegosImpresion(produccionActualizada);
+
+    return {
+      ...current,
+      produccion: produccionActualizada,
+      proceso: procesoActualizado,
+      procesos,
+      juegos,
+      juegoActual: getCurrentJuego(juegos, user?.id),
+      progress: getProgress(procesos),
+    };
+  };
+
+  const handleJuegoAction = async (juegoId, accion, payload = null) => {
+    const loadingKey = `juego-${juegoId}-${accion}`;
+    setActionLoading(loadingKey);
+    try {
+      const produccionActualizada = await apiFetch(`/ordenes-produccion/juegos-impresion/${juegoId}/${accion}`, {
+        method: 'PUT',
+        ...(payload ? { body: payload } : {}),
+      });
+      setSelectedRow((current) => updateSelectedRowWithProduccion(current, produccionActualizada));
+      await recargar({ silent: true });
+      if (['iniciar', 'reanudar', 'finalizar'].includes(accion)) {
+        setCierreCantidades({ cantidad_buena: '', cantidad_mala: '' });
+        setCierreErrors(emptyCierreErrors());
+      }
+    } catch (err) {
+      if (accion === 'finalizar' && payload) {
+        setCierreErrors({
+          cantidad_buena: 'Revisa este valor.',
+          cantidad_mala: 'Revisa este valor.',
+          general: err.message || 'No se pudo finalizar el juego. Revisa las cantidades registradas.',
+        });
+        return;
+      }
+      alert(err.message || `Error al ${accion} el juego`);
+    } finally {
+      setActionLoading('');
+    }
+  };
+
   const handleCrearIncidencia = async (payload) => {
     await incidenciasService.crearIncidencia(payload);
     setIncidenciaTarget(null);
@@ -375,6 +494,10 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const codigo = formatOrderCode('OP', produccion.codigo, produccion.id);
     const entrega = formatLocalDateTimeParts(produccion.fecha_entrega_estimada);
     const isAcabados = getProcessArea(proceso) === 'ACABADOS';
+    const rowEstado = getRowEstado(row);
+    const juegos = asArray(row.juegos);
+    const juegosTerminados = juegos.filter((juego) => juego.estado === 'TERMINADO').length;
+    const juegoActual = row.juegoActual;
     const acabadosRuta = getProcesosByArea(procesos, 'ACABADOS');
     const impresionProceso = getImpresionProceso(procesos);
     const isPreviewOnly = activeMenu !== 'DISPONIBLES' || row.isLocked;
@@ -394,7 +517,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             </div>
             {!row.isTrabajoActual && (
               <div className="operator-order-badges">
-                <Badge tone={getStatusTone(proceso.estado)}>{formatStatus(proceso.estado)}</Badge>
+                <Badge tone={getStatusTone(rowEstado)}>{formatStatus(rowEstado)}</Badge>
               </div>
             )}
           </div>
@@ -474,8 +597,10 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
         ) : (
           <div className="operator-order-details">
             <div>
-              <span>Proceso</span>
-              <strong>{proceso.tipo_proceso}</strong>
+              <span>{row.isJuegosImpresion ? 'Control' : 'Proceso'}</span>
+              <strong>{row.isJuegosImpresion ? 'Juegos de placas' : proceso.tipo_proceso}</strong>
+              {row.isJuegosImpresion && <small>{juegosTerminados} de {juegos.length} terminados</small>}
+              {juegoActual && <small>{juegoActual.codigo_lado}</small>}
             </div>
             <div>
               <span>Cliente</span>
@@ -511,7 +636,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
           </Button>
           {row.isTrabajoActual && (
             <span className="operator-action-state">
-              <Badge tone={getStatusTone(proceso.estado)}>{formatStatus(proceso.estado)}</Badge>
+              <Badge tone={getStatusTone(rowEstado)}>{formatStatus(rowEstado)}</Badge>
               <Badge tone="info">Trabajo actual</Badge>
             </span>
           )}
@@ -528,6 +653,10 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const maquina = catalogMaps.maquinas[produccion.maquina_id]?.nombre || 'Sin maquina';
     const codigo = formatOrderCode('OP', produccion.codigo, produccion.id);
     const isAcabados = getProcessArea(proceso) === 'ACABADOS';
+    const isJuegosImpresion = Boolean(row.isJuegosImpresion);
+    const juegos = asArray(row.juegos);
+    const juegoActual = getCurrentJuego(juegos, user?.id);
+    const rowEstado = getRowEstado(row);
     const acabadosRuta = getProcesosByArea(procesos, 'ACABADOS');
     const impresionProceso = getImpresionProceso(procesos);
     const isBusy = Boolean(actionLoading);
@@ -537,12 +666,12 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     ));
     const hasOpenIncidencia = incidenciasAbiertasProceso.length > 0;
     const actionsLocked = incidenciasLoading || hasOpenIncidencia || row.isLocked;
-    const canReport = puedeReportarIncidencia(proceso) && !actionsLocked;
-    const closeDisabled = !previewOnly && proceso.estado === 'EN_PROCESO';
+    const canReport = (isJuegosImpresion ? juegoActual?.estado === 'PAUSADO' : puedeReportarIncidencia(proceso)) && !actionsLocked;
+    const closeDisabled = !previewOnly && (proceso.estado === 'EN_PROCESO' || juegoActual?.estado === 'EN_PROCESO');
     const necesitaCantidades = requiereCantidadesCierre(proceso);
     const cantidadPlanificada = Number(produccion.cantidad || 0) + Number(produccion.demasia || 0);
 
-    const finalizarProceso = () => {
+    const finalizarProceso = (targetJuego = null) => {
       if (necesitaCantidades) {
         const nextErrors = emptyCierreErrors();
         const cantidadBuenaTexto = cierreCantidades.cantidad_buena;
@@ -595,10 +724,15 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
         }
 
         setCierreErrors(emptyCierreErrors());
-        handleAction(produccion.id, proceso.tipo_proceso, 'finalizar', {
+        const payload = {
           cantidad_buena: cantidadBuena,
           cantidad_mala: cantidadMala,
-        });
+        };
+        if (targetJuego) {
+          handleJuegoAction(targetJuego.id, 'finalizar', payload);
+        } else {
+          handleAction(produccion.id, proceso.tipo_proceso, 'finalizar', payload);
+        }
         return;
       }
 
@@ -610,7 +744,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
         title={isAcabados ? 'Detalle de acabado' : previewOnly ? 'Previsualizar orden' : 'Detalle de orden'}
         onClose={() => setSelectedRow(null)}
         panelClassName="modal-panel-wide operator-detail-modal"
-        headerMeta={<Badge tone={getStatusTone(proceso.estado)}>{formatStatus(proceso.estado)}</Badge>}
+        headerMeta={<Badge tone={getStatusTone(rowEstado)}>{formatStatus(rowEstado)}</Badge>}
         closeDisabled={closeDisabled}
       >
         <div className="operator-detail-grid">
@@ -664,11 +798,52 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
           <section className="operator-detail-section">
             <h3>{isAcabados ? 'Control de acabado' : previewOnly ? 'Proceso' : 'Acciones'}</h3>
             <div className="operator-process-summary">
-              <strong>{proceso.tipo_proceso}</strong>
-              <Badge tone={getStatusTone(proceso.estado)}>{formatStatus(proceso.estado)}</Badge>
+              <strong>{isJuegosImpresion ? 'Juegos de placas' : proceso.tipo_proceso}</strong>
+              <Badge tone={getStatusTone(rowEstado)}>{formatStatus(rowEstado)}</Badge>
             </div>
 
-            {isAcabados ? (
+            {isJuegosImpresion ? (
+              <div className="operator-finish-route-detail operator-plate-route-detail">
+                <span>Placas disponibles</span>
+                <div>
+                  {juegos.map((juego) => {
+                    const isCurrentJuego = juegoActual?.id === juego.id;
+                    const canStartJuego = canUseJuego(juego, user?.id) && !actionsLocked && puedeIniciar;
+                    return (
+                      <div key={juego.id} className={isCurrentJuego ? 'operator-finish-route-step-current' : ''}>
+                        <div>
+                          <strong>{juego.codigo_lado}</strong>
+                          <small>Par {juego.grupo_par} - {juego.lado}</small>
+                          {(juego.cantidad_buena !== null && juego.cantidad_buena !== undefined) && (
+                            <small>
+                              Buena {formatNumber(juego.cantidad_buena)} - Mala {formatNumber(juego.cantidad_mala || 0)}
+                            </small>
+                          )}
+                          {(juego.demasia_consumida !== null && juego.demasia_consumida !== undefined) && (
+                            <small>
+                              Demasia usada {formatNumber(juego.demasia_consumida)} - queda {formatNumber(juego.demasia_restante || 0)}
+                            </small>
+                          )}
+                        </div>
+                        <div className="operator-plate-actions">
+                          <Badge tone={getStatusTone(juego.estado)}>{formatStatus(juego.estado)}</Badge>
+                          {!previewOnly && !juegoActual && juego.estado !== 'TERMINADO' && (
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              onClick={() => handleJuegoAction(juego.id, 'iniciar')}
+                              disabled={isBusy || !canStartJuego}
+                            >
+                              Iniciar
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : isAcabados ? (
               <div className="operator-finish-route-detail">
                 <span>Ruta de acabados</span>
                 <div>
@@ -720,80 +895,154 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             {!previewOnly && (
               <>
                 <div className="operator-detail-actions">
-                  {proceso.estado === 'PENDIENTE' && (
-                    <Button
-                      variant="success"
-                      onClick={() => handleAction(produccion.id, proceso.tipo_proceso, 'iniciar')}
-                      disabled={isBusy || !puedeIniciar || actionsLocked}
-                    >
-                      Iniciar
-                    </Button>
-                  )}
-
-                  {proceso.estado === 'EN_PROCESO' && (
+                  {isJuegosImpresion ? (
                     <>
-                      {necesitaCantidades && (
-                        <div className="operator-close-quantities">
-                          <p className="operator-close-quantities-note">
-                            Planificado: {formatNumber(cantidadPlanificada)}
-                          </p>
-                          <Input
-                            label="Cantidad buena"
-                            name="cantidad_buena"
-                            type="number"
-                            min="0"
-                            step="1"
-                            inputMode="numeric"
-                            value={cierreCantidades.cantidad_buena}
-                            onChange={(event) => updateCierreCantidad('cantidad_buena', event.target.value)}
-                            placeholder="Ej: 480"
-                            disabled={isBusy || actionsLocked}
-                            error={cierreErrors.cantidad_buena}
-                            required
-                          />
-                          <Input
-                            label="Cantidad mala"
-                            name="cantidad_mala"
-                            type="number"
-                            min="0"
-                            step="1"
-                            inputMode="numeric"
-                            value={cierreCantidades.cantidad_mala}
-                            onChange={(event) => updateCierreCantidad('cantidad_mala', event.target.value)}
-                            placeholder="Ej: 10"
-                            disabled={isBusy || actionsLocked}
-                            error={cierreErrors.cantidad_mala}
-                            required
-                          />
-                          {cierreErrors.general && (
-                            <p className="operator-close-quantities-error">{cierreErrors.general}</p>
-                          )}
-                        </div>
+                      {!juegoActual && (
+                        <p className="muted">Selecciona una placa disponible para iniciar el trabajo.</p>
                       )}
-                      <Button
-                        variant="warning"
-                        onClick={() => handleAction(produccion.id, proceso.tipo_proceso, 'pausar')}
-                        disabled={isBusy || actionsLocked}
-                      >
-                        Pausar
-                      </Button>
-                      <Button
-                        variant="success"
-                        onClick={finalizarProceso}
-                        disabled={isBusy || actionsLocked}
-                      >
-                        Finalizar
-                      </Button>
-                    </>
-                  )}
 
-                  {proceso.estado === 'PAUSADO' && (
-                    <Button
-                      onClick={() => handleAction(produccion.id, proceso.tipo_proceso, 'reanudar')}
-                      disabled={isBusy || actionsLocked}
-                    >
-                      Reanudar
-                    </Button>
+                      {juegoActual?.estado === 'EN_PROCESO' && (
+                        <>
+                          <div className="operator-close-quantities">
+                            <p className="operator-close-quantities-note">
+                              {juegoActual.codigo_lado} - Planificado: {formatNumber(cantidadPlanificada)}
+                            </p>
+                            <Input
+                              label="Cantidad buena"
+                              name="cantidad_buena"
+                              type="number"
+                              min="0"
+                              step="1"
+                              inputMode="numeric"
+                              value={cierreCantidades.cantidad_buena}
+                              onChange={(event) => updateCierreCantidad('cantidad_buena', event.target.value)}
+                              placeholder="Ej: 480"
+                              disabled={isBusy || actionsLocked}
+                              error={cierreErrors.cantidad_buena}
+                              required
+                            />
+                            <Input
+                              label="Cantidad mala"
+                              name="cantidad_mala"
+                              type="number"
+                              min="0"
+                              step="1"
+                              inputMode="numeric"
+                              value={cierreCantidades.cantidad_mala}
+                              onChange={(event) => updateCierreCantidad('cantidad_mala', event.target.value)}
+                              placeholder="Ej: 10"
+                              disabled={isBusy || actionsLocked}
+                              error={cierreErrors.cantidad_mala}
+                              required
+                            />
+                            {cierreErrors.general && (
+                              <p className="operator-close-quantities-error">{cierreErrors.general}</p>
+                            )}
+                          </div>
+                          <Button
+                            variant="warning"
+                            onClick={() => handleJuegoAction(juegoActual.id, 'pausar')}
+                            disabled={isBusy || actionsLocked}
+                          >
+                            Pausar
+                          </Button>
+                          <Button
+                            variant="success"
+                            onClick={() => finalizarProceso(juegoActual)}
+                            disabled={isBusy || actionsLocked}
+                          >
+                            Finalizar
+                          </Button>
+                        </>
+                      )}
+
+                      {juegoActual?.estado === 'PAUSADO' && (
+                        <Button
+                          onClick={() => handleJuegoAction(juegoActual.id, 'reanudar')}
+                          disabled={isBusy || actionsLocked}
+                        >
+                          Reanudar
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {proceso.estado === 'PENDIENTE' && (
+                        <Button
+                          variant="success"
+                          onClick={() => handleAction(produccion.id, proceso.tipo_proceso, 'iniciar')}
+                          disabled={isBusy || !puedeIniciar || actionsLocked}
+                        >
+                          Iniciar
+                        </Button>
+                      )}
+
+                      {proceso.estado === 'EN_PROCESO' && (
+                        <>
+                          {necesitaCantidades && (
+                            <div className="operator-close-quantities">
+                              <p className="operator-close-quantities-note">
+                                Planificado: {formatNumber(cantidadPlanificada)}
+                              </p>
+                              <Input
+                                label="Cantidad buena"
+                                name="cantidad_buena"
+                                type="number"
+                                min="0"
+                                step="1"
+                                inputMode="numeric"
+                                value={cierreCantidades.cantidad_buena}
+                                onChange={(event) => updateCierreCantidad('cantidad_buena', event.target.value)}
+                                placeholder="Ej: 480"
+                                disabled={isBusy || actionsLocked}
+                                error={cierreErrors.cantidad_buena}
+                                required
+                              />
+                              <Input
+                                label="Cantidad mala"
+                                name="cantidad_mala"
+                                type="number"
+                                min="0"
+                                step="1"
+                                inputMode="numeric"
+                                value={cierreCantidades.cantidad_mala}
+                                onChange={(event) => updateCierreCantidad('cantidad_mala', event.target.value)}
+                                placeholder="Ej: 10"
+                                disabled={isBusy || actionsLocked}
+                                error={cierreErrors.cantidad_mala}
+                                required
+                              />
+                              {cierreErrors.general && (
+                                <p className="operator-close-quantities-error">{cierreErrors.general}</p>
+                              )}
+                            </div>
+                          )}
+                          <Button
+                            variant="warning"
+                            onClick={() => handleAction(produccion.id, proceso.tipo_proceso, 'pausar')}
+                            disabled={isBusy || actionsLocked}
+                          >
+                            Pausar
+                          </Button>
+                          <Button
+                            variant="success"
+                            onClick={finalizarProceso}
+                            disabled={isBusy || actionsLocked}
+                          >
+                            Finalizar
+                          </Button>
+                        </>
+                      )}
+
+                      {proceso.estado === 'PAUSADO' && (
+                        <Button
+                          onClick={() => handleAction(produccion.id, proceso.tipo_proceso, 'reanudar')}
+                          disabled={isBusy || actionsLocked}
+                        >
+                          Reanudar
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
 

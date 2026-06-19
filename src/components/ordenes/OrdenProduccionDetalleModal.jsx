@@ -352,6 +352,7 @@ export default function OrdenProduccionDetalleModal({
   const procesoActual = getProcesoActual(produccion);
   const cliente = findById(clientes, produccion.cliente_id);
   const acabados = procesos.filter((proceso) => getProcessArea(proceso) === 'ACABADOS');
+  const juegosImpresion = asArray(produccion.juegos_impresion);
 
   return (
     <Modal
@@ -434,6 +435,7 @@ export default function OrdenProduccionDetalleModal({
                 <DetailItem label="Maquina" value={getCatalogName(maquinas, produccion.maquina_id, 'Sin maquina')} />
                 <DetailItem label="Impresion" value={produccion.tipo_impresion || '-'} />
                 <DetailItem label="Color" value={produccion.modo_color || '-'} />
+                <DetailItem label="Juegos de placas" value={juegosImpresion.length || '-'} helper={juegosImpresion.length ? 'Control por lado de impresion' : 'Sin control por placas'} />
               </div>
             </section>
           </div>
@@ -468,6 +470,30 @@ export default function OrdenProduccionDetalleModal({
             </div>
             <ProcessTimeline procesos={procesos} />
           </section>
+
+          {juegosImpresion.length > 0 && (
+            <section className="production-detail-panel">
+              <div className="production-detail-panel-heading">
+                <div>
+                  <h3>Juegos de placas</h3>
+                  <p>{juegosImpresion.length} lados configurados para impresion</p>
+                </div>
+              </div>
+              <div className="production-plate-games-list">
+                {juegosImpresion.map((juego) => (
+                  <div key={juego.id}>
+                    <div>
+                      <strong>{juego.codigo_lado}</strong>
+                      <span>Par {juego.grupo_par} - {juego.lado}</span>
+                    </div>
+                    <Badge tone={getStatusTone(juego.estado)}>{formatStatus(juego.estado)}</Badge>
+                    <small>Buena: {formatProcessQuantity(juego.cantidad_buena)} / Mala: {formatProcessQuantity(juego.cantidad_mala)}</small>
+                    <small>Demasia usada: {formatProcessQuantity(juego.demasia_consumida)}</small>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="production-detail-panel">
             <div className="production-detail-panel-heading">
