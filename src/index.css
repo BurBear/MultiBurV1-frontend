@@ -2946,14 +2946,55 @@ textarea {
   box-shadow: inset 3px 0 0 rgba(56, 189, 248, 0.95);
 }
 
-.operator-plate-route-detail > div > div {
-  align-items: stretch;
-  gap: 0.7rem;
+.operator-plate-pair-grid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
-.operator-plate-route-detail > div > div > div:first-child {
+.operator-plate-pair-card {
+  align-items: stretch !important;
+  background: rgba(15, 23, 42, 0.62) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  display: grid !important;
+  gap: 0.45rem !important;
+  justify-content: stretch !important;
+  min-height: 0 !important;
+  padding: 0.55rem !important;
+}
+
+.operator-plate-pair-card > span {
+  color: #bfdbfe;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.operator-plate-pair-card > div {
   display: grid;
-  gap: 0.2rem;
+  gap: 0.45rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-plate-side {
+  align-items: stretch;
+  background: rgba(2, 6, 23, 0.32);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 7px;
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.5rem;
+}
+
+.operator-plate-side > div:first-child {
+  display: grid;
+  gap: 0.18rem;
   min-width: 0;
 }
 
@@ -2963,21 +3004,32 @@ textarea {
 
 .operator-plate-route-detail small {
   color: var(--text-muted);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 700;
 }
 
 .operator-plate-actions {
   align-content: start;
   display: grid;
-  gap: 0.45rem;
-  justify-items: end;
-  min-width: 126px;
+  gap: 0.4rem;
+  justify-items: stretch;
+  min-width: 0;
+}
+
+.operator-plate-actions .badge {
+  justify-self: start;
 }
 
 .operator-plate-actions .btn {
-  min-height: 34px;
+  min-height: 30px;
   width: 100%;
+}
+
+@media (max-width: 760px) {
+  .operator-plate-pair-grid,
+  .operator-plate-pair-card > div {
+    grid-template-columns: 1fr;
+  }
 }
 
 .operator-detail-actions {
@@ -3259,18 +3311,24 @@ textarea {
 }
 
 .plate-games-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.26);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0.65rem;
 }
 
 .plate-games-preview strong {
-  background: rgba(34, 197, 94, 0.12);
-  border: 1px solid rgba(34, 197, 94, 0.32);
-  border-radius: 999px;
   color: #bbf7d0;
-  font-size: 0.74rem;
-  padding: 0.32rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+.plate-games-preview small {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .finish-route-modal {

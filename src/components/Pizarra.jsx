@@ -77,6 +77,26 @@ function getDemasiaJuegoSummary(juego, produccion) {
   };
 }
 
+function groupJuegosByPair(juegos) {
+  const groups = new Map();
+
+  asArray(juegos).forEach((juego) => {
+    const groupKey = juego.grupo_par || juego.id;
+    if (!groups.has(groupKey)) groups.set(groupKey, []);
+    groups.get(groupKey).push(juego);
+  });
+
+  return Array.from(groups.entries()).map(([grupo, pairJuegos]) => ({
+    grupo,
+    juegos: pairJuegos.sort((a, b) => {
+      if (a.lado === b.lado) return String(a.codigo_lado).localeCompare(String(b.codigo_lado));
+      if (a.lado === 'TIRA') return -1;
+      if (b.lado === 'TIRA') return 1;
+      return String(a.lado).localeCompare(String(b.lado));
+    }),
+  }));
+}
+
 function getRowEstado(row) {
   if (!row?.isJuegosImpresion) return row?.proceso?.estado;
   const juegos = asArray(row.juegos);
@@ -818,46 +838,56 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             {isJuegosImpresion ? (
               <div className="operator-finish-route-detail operator-plate-route-detail">
                 <span>Placas disponibles</span>
-                <div>
-                  {juegos.map((juego) => {
-                    const isCurrentJuego = juegoActual?.id === juego.id;
-                    const canStartJuego = canUseJuego(juego, user?.id) && !actionsLocked && puedeIniciar;
-                    const demasiaJuego = getDemasiaJuegoSummary(juego, produccion);
-                    return (
-                      <div key={juego.id} className={isCurrentJuego ? 'operator-finish-route-step-current' : ''}>
-                        <div>
-                          <strong>{juego.codigo_lado}</strong>
-                          <small>Par {juego.grupo_par} - {juego.lado}</small>
-                          {(juego.cantidad_buena !== null && juego.cantidad_buena !== undefined) && (
-                            <small>
-                              Buena {formatNumber(juego.cantidad_buena)} - Mala {formatNumber(juego.cantidad_mala || 0)}
-                            </small>
-                          )}
-                          {(juego.demasia_consumida !== null && juego.demasia_consumida !== undefined) && (
-                            <small>
-                              Demasia mala {formatNumber(demasiaJuego.malaUsada)} - buena disponible {formatNumber(demasiaJuego.buenaDisponible)}
-                            </small>
-                          )}
-                          {demasiaJuego.buenaExtra > 0 && (
-                            <small>Buena de demasia {formatNumber(demasiaJuego.buenaExtra)}</small>
-                          )}
-                        </div>
-                        <div className="operator-plate-actions">
-                          <Badge tone={getStatusTone(juego.estado)}>{formatStatus(juego.estado)}</Badge>
-                          {!previewOnly && !juegoActual && juego.estado !== 'TERMINADO' && (
-                            <Button
-                              size="sm"
-                              variant="primary"
-                              onClick={() => handleJuegoAction(juego.id, 'iniciar')}
-                              disabled={isBusy || !canStartJuego}
+                <div className="operator-plate-pair-grid">
+                  {groupJuegosByPair(juegos).map((pair) => (
+                    <div key={pair.grupo} className="operator-plate-pair-card">
+                      <span>Par {pair.grupo}</span>
+                      <div>
+                        {pair.juegos.map((juego) => {
+                          const isCurrentJuego = juegoActual?.id === juego.id;
+                          const canStartJuego = canUseJuego(juego, user?.id) && !actionsLocked && puedeIniciar;
+                          const demasiaJuego = getDemasiaJuegoSummary(juego, produccion);
+                          return (
+                            <div
+                              key={juego.id}
+                              className={`operator-plate-side ${isCurrentJuego ? 'operator-finish-route-step-current' : ''}`}
                             >
-                              Iniciar
-                            </Button>
-                          )}
-                        </div>
+                              <div>
+                                <strong>{juego.codigo_lado}</strong>
+                                <small>{juego.lado}</small>
+                                {(juego.cantidad_buena !== null && juego.cantidad_buena !== undefined) && (
+                                  <small>
+                                    B {formatNumber(juego.cantidad_buena)} / M {formatNumber(juego.cantidad_mala || 0)}
+                                  </small>
+                                )}
+                                {(juego.demasia_consumida !== null && juego.demasia_consumida !== undefined) && (
+                                  <small>
+                                    Dem. mala {formatNumber(demasiaJuego.malaUsada)} / disp. {formatNumber(demasiaJuego.buenaDisponible)}
+                                  </small>
+                                )}
+                                {demasiaJuego.buenaExtra > 0 && (
+                                  <small>Dem. buena {formatNumber(demasiaJuego.buenaExtra)}</small>
+                                )}
+                              </div>
+                              <div className="operator-plate-actions">
+                                <Badge tone={getStatusTone(juego.estado)}>{formatStatus(juego.estado)}</Badge>
+                                {!previewOnly && !juegoActual && juego.estado !== 'TERMINADO' && (
+                                  <Button
+                                    size="sm"
+                                    variant="primary"
+                                    onClick={() => handleJuegoAction(juego.id, 'iniciar')}
+                                    disabled={isBusy || !canStartJuego}
+                                  >
+                                    Iniciar
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               </div>
             ) : isAcabados ? (

@@ -81,27 +81,24 @@ function usesPairedPlateGames(tipoImpresion) {
 }
 
 function defaultPlateGames(tipoImpresion) {
-  if (usesPairedPlateGames(tipoImpresion)) return 2;
-  if (tipoImpresion === 'TIRA') return 1;
-  return '';
+  return usesPlateGames(tipoImpresion) ? 1 : '';
 }
 
-function buildPlateGamesPreview(tipoImpresion, cantidadJuegos) {
+function buildPlateGamesSummary(tipoImpresion, cantidadJuegos) {
   const total = Number(cantidadJuegos || 0);
-  if (!usesPlateGames(tipoImpresion) || !Number.isInteger(total) || total <= 0) return [];
+  if (!usesPlateGames(tipoImpresion) || !Number.isInteger(total) || total <= 0) return null;
 
   if (usesPairedPlateGames(tipoImpresion)) {
-    const pairs = Math.floor(total / 2);
-    return Array.from({ length: pairs }, (_, index) => ({
-      id: index + 1,
-      label: `TIRA ${index + 1}A - RETIRA ${index + 1}B`,
-    }));
+    return {
+      title: `${total} ${total === 1 ? 'par configurado' : 'pares configurados'}`,
+      detail: `${total * 2} lados: TIRA 1A - RETIRA 1B${total > 1 ? ` hasta TIRA ${total}A - RETIRA ${total}B` : ''}`,
+    };
   }
 
-  return Array.from({ length: total }, (_, index) => ({
-    id: index + 1,
-    label: `TIRA ${index + 1}A`,
-  }));
+  return {
+    title: `${total} ${total === 1 ? 'tira configurada' : 'tiras configuradas'}`,
+    detail: `Se generara ${total === 1 ? 'TIRA 1A' : `desde TIRA 1A hasta TIRA ${total}A`}.`,
+  };
 }
 
 function validatePlateGames(nextErrors, values) {
@@ -111,8 +108,8 @@ function validatePlateGames(nextErrors, values) {
     nextErrors.cantidad_juegos_placas = 'Ingresa una cantidad valida de juegos de placas.';
     return;
   }
-  if (usesPairedPlateGames(values.tipo_impresion) && value % 2 !== 0) {
-    nextErrors.cantidad_juegos_placas = 'Para T/R o T+R la cantidad debe ser par.';
+  if (value > 20) {
+    nextErrors.cantidad_juegos_placas = 'El maximo permitido es 20.';
   }
 }
 
@@ -247,7 +244,7 @@ export default function OrdenProduccionFormModal({
   const selectedMaterial = materiales.find((material) => material.id === Number(values.material_id));
   const requiereRutaAcabados = serviceIncludesAcabados(values.tipo_servicio, values.procesos_personalizados);
   const usaJuegosPlacas = usesPlateGames(values.tipo_impresion);
-  const juegosPlacasPreview = buildPlateGamesPreview(values.tipo_impresion, values.cantidad_juegos_placas);
+  const juegosPlacasSummary = buildPlateGamesSummary(values.tipo_impresion, values.cantidad_juegos_placas);
 
   const setValue = (name, value) => {
     setValues((current) => ({ ...current, [name]: value }));
@@ -534,10 +531,11 @@ export default function OrdenProduccionFormModal({
             {usaJuegosPlacas && (
               <div className="plate-games-summary">
                 <Input
-                  label="Juegos de placas"
+                  label={usesPairedPlateGames(values.tipo_impresion) ? 'Pares de placas' : 'Juegos de placas'}
                   name="cantidad_juegos_placas"
                   type="number"
                   min="1"
+                  max="20"
                   step="1"
                   value={values.cantidad_juegos_placas}
                   onChange={(event) => setValue('cantidad_juegos_placas', event.target.value)}
@@ -548,14 +546,13 @@ export default function OrdenProduccionFormModal({
                   <span>Control por placas</span>
                   <p>
                     {usesPairedPlateGames(values.tipo_impresion)
-                      ? 'Para T/R o T+R ingresa un numero par. Ej: 6 juegos genera 3 tiras y 3 retiras bloqueadas por par.'
-                      : 'Para TIRA se genera una placa independiente por cada juego configurado.'}
+                      ? 'Para T/R o T+R ingresa la cantidad de pares. Ej: 3 genera TIRA 1A/RETIRA 1B hasta TIRA 3A/RETIRA 3B.'
+                      : 'Para TIRA se genera una placa independiente por cada juego configurado. Maximo 20.'}
                   </p>
-                  {juegosPlacasPreview.length > 0 && (
+                  {juegosPlacasSummary && (
                     <div className="plate-games-preview">
-                      {juegosPlacasPreview.map((juego) => (
-                        <strong key={juego.id}>{juego.label}</strong>
-                      ))}
+                      <strong>{juegosPlacasSummary.title}</strong>
+                      <small>{juegosPlacasSummary.detail}</small>
                     </div>
                   )}
                 </div>
