@@ -64,6 +64,19 @@ function canUseJuego(juego, userId) {
   return juego.estado === 'BLOQUEADO' && sameId(juego.operador_id, userId);
 }
 
+function getDemasiaJuegoSummary(juego, produccion) {
+  const demasiaTotal = Number(produccion?.demasia || 0);
+  const cantidadBase = Number(produccion?.cantidad || 0);
+  const cantidadBuena = Number(juego?.cantidad_buena || 0);
+  const cantidadMala = Number(juego?.cantidad_mala || 0);
+  const demasiaMala = Math.min(cantidadMala, demasiaTotal);
+  return {
+    buenaExtra: Math.max(0, cantidadBuena - cantidadBase),
+    malaUsada: demasiaMala,
+    buenaDisponible: Math.max(0, demasiaTotal - demasiaMala),
+  };
+}
+
 function getRowEstado(row) {
   if (!row?.isJuegosImpresion) return row?.proceso?.estado;
   const juegos = asArray(row.juegos);
@@ -809,6 +822,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                   {juegos.map((juego) => {
                     const isCurrentJuego = juegoActual?.id === juego.id;
                     const canStartJuego = canUseJuego(juego, user?.id) && !actionsLocked && puedeIniciar;
+                    const demasiaJuego = getDemasiaJuegoSummary(juego, produccion);
                     return (
                       <div key={juego.id} className={isCurrentJuego ? 'operator-finish-route-step-current' : ''}>
                         <div>
@@ -821,8 +835,11 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                           )}
                           {(juego.demasia_consumida !== null && juego.demasia_consumida !== undefined) && (
                             <small>
-                              Demasia usada {formatNumber(juego.demasia_consumida)} - queda {formatNumber(juego.demasia_restante || 0)}
+                              Demasia mala {formatNumber(demasiaJuego.malaUsada)} - buena disponible {formatNumber(demasiaJuego.buenaDisponible)}
                             </small>
+                          )}
+                          {demasiaJuego.buenaExtra > 0 && (
+                            <small>Buena de demasia {formatNumber(demasiaJuego.buenaExtra)}</small>
                           )}
                         </div>
                         <div className="operator-plate-actions">

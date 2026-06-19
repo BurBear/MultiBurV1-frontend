@@ -51,6 +51,19 @@ function formatProcessQuantity(value) {
   return formatNumber(value);
 }
 
+function getDemasiaJuegoSummary(juego, produccion) {
+  const demasiaTotal = Number(produccion?.demasia || 0);
+  const cantidadBase = Number(produccion?.cantidad || 0);
+  const cantidadBuena = Number(juego?.cantidad_buena || 0);
+  const cantidadMala = Number(juego?.cantidad_mala || 0);
+  const demasiaMala = Math.min(cantidadMala, demasiaTotal);
+  return {
+    buenaExtra: Math.max(0, cantidadBuena - cantidadBase),
+    malaUsada: demasiaMala,
+    buenaDisponible: Math.max(0, demasiaTotal - demasiaMala),
+  };
+}
+
 function formatDuration(minutes) {
   if (minutes === null || minutes === undefined) return '-';
   const total = Number(minutes || 0);
@@ -480,17 +493,23 @@ export default function OrdenProduccionDetalleModal({
                 </div>
               </div>
               <div className="production-plate-games-list">
-                {juegosImpresion.map((juego) => (
-                  <div key={juego.id}>
-                    <div>
-                      <strong>{juego.codigo_lado}</strong>
-                      <span>Par {juego.grupo_par} - {juego.lado}</span>
+                {juegosImpresion.map((juego) => {
+                  const demasiaJuego = getDemasiaJuegoSummary(juego, produccion);
+                  return (
+                    <div key={juego.id}>
+                      <div>
+                        <strong>{juego.codigo_lado}</strong>
+                        <span>Par {juego.grupo_par} - {juego.lado}</span>
+                      </div>
+                      <Badge tone={getStatusTone(juego.estado)}>{formatStatus(juego.estado)}</Badge>
+                      <small>Buena: {formatProcessQuantity(juego.cantidad_buena)} / Mala: {formatProcessQuantity(juego.cantidad_mala)}</small>
+                      <small>Demasia mala: {formatNumber(demasiaJuego.malaUsada)} / Buena disponible: {formatNumber(demasiaJuego.buenaDisponible)}</small>
+                      {demasiaJuego.buenaExtra > 0 && (
+                        <small>Buena de demasia: {formatNumber(demasiaJuego.buenaExtra)}</small>
+                      )}
                     </div>
-                    <Badge tone={getStatusTone(juego.estado)}>{formatStatus(juego.estado)}</Badge>
-                    <small>Buena: {formatProcessQuantity(juego.cantidad_buena)} / Mala: {formatProcessQuantity(juego.cantidad_mala)}</small>
-                    <small>Demasia usada: {formatProcessQuantity(juego.demasia_consumida)}</small>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
