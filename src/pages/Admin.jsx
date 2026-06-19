@@ -11,6 +11,7 @@ import OrdenesTrabajo from './admin/OrdenesTrabajo';
 import OrdenesProduccion from './admin/OrdenesProduccion';
 import Incidencias from './admin/Incidencias';
 import Reportes from './admin/Reportes';
+import Usuarios from './admin/Usuarios';
 
 function MenuIcon({ name }) {
   const commonProps = {
@@ -49,6 +50,14 @@ function MenuIcon({ name }) {
         <circle cx="9" cy="7" r="4" />
         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    ),
+    usuarios: (
+      <>
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+        <path d="M12 11v4" />
+        <path d="m9.5 13 2.5 2 2.5-2" />
       </>
     ),
     materiales: (
@@ -111,6 +120,7 @@ function MenuIcon({ name }) {
 const sections = [
   { id: 'DASHBOARD', label: 'Dashboard', icon: 'dashboard', Component: Dashboard },
   { id: 'PIZARRA_GLOBAL', label: 'Pizarra Global', icon: 'board', Component: PizarraGlobal },
+  { id: 'USUARIOS', label: 'Usuarios', icon: 'usuarios', Component: Usuarios },
   { id: 'CLIENTES', label: 'Clientes', icon: 'clientes', Component: Clientes },
   { id: 'MATERIALES', label: 'Materiales', icon: 'materiales', Component: Materiales },
   { id: 'FORMATOS', label: 'Formatos', icon: 'formatos', Component: Formatos },
@@ -123,7 +133,7 @@ const sections = [
 
 const menuGroups = [
   { id: 'GENERAL', label: 'General', items: ['DASHBOARD', 'PIZARRA_GLOBAL'] },
-  { id: 'CATALOGOS', label: 'Catalogos', items: ['CLIENTES', 'MATERIALES', 'FORMATOS', 'MAQUINAS'] },
+  { id: 'CATALOGOS', label: 'Catalogos', items: ['USUARIOS', 'CLIENTES', 'MATERIALES', 'FORMATOS', 'MAQUINAS'] },
   { id: 'ORDENES', label: 'Ordenes', items: ['ORDENES_TRABAJO', 'ORDENES_PRODUCCION'] },
   { id: 'PRODUCCION', label: 'Produccion', items: ['INCIDENCIAS', 'REPORTES'] },
 ];
