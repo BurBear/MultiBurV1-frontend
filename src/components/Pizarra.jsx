@@ -722,7 +722,18 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const cantidadPlanificada = Number(produccion.cantidad || 0) + Number(produccion.demasia || 0);
     const pairGroups = isJuegosImpresion ? groupJuegosByPair(juegos) : [];
     const currentPairKey = juegoActual?.grupo_par ? String(juegoActual.grupo_par) : null;
-    const selectedPairKey = currentPairKey || selectedPlatePair;
+    const selectablePairGroups = pairGroups.filter((pair) => {
+      if (previewOnly) return true;
+      const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
+      const pairHasAvailable = pair.juegos.some((juego) => (
+        canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO'
+      ));
+      return pairHasCurrent || pairHasAvailable;
+    });
+    const hasSelectedPairAvailable = selectablePairGroups.some((pair) => (
+      String(pair.grupo) === String(selectedPlatePair)
+    ));
+    const selectedPairKey = currentPairKey || (hasSelectedPairAvailable ? selectedPlatePair : '');
     const selectedPair = pairGroups.find((pair) => String(pair.grupo) === String(selectedPairKey));
 
     const finalizarProceso = (targetJuego = null) => {
@@ -862,16 +873,20 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                   disabled={Boolean(currentPairKey) && !previewOnly}
                 >
                   <option value="">Selecciona un par disponible</option>
-                  {pairGroups.map((pair) => {
+                  {selectablePairGroups.map((pair) => {
                     const pairStatus = getPairStatus(pair.juegos, user?.id);
                     const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
                     const pairHasAvailable = pair.juegos.some((juego) => canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO');
-                    const pairSelectable = previewOnly || pairHasCurrent || pairHasAvailable;
+                    const displayStatus = pairHasCurrent
+                      ? 'TRABAJO ACTUAL'
+                      : pairHasAvailable
+                        ? 'DISPONIBLE'
+                        : pairStatus;
                     const pairLabel = `${pair.grupo} ${produccion.tipo_impresion || 'T+R'}`;
 
                     return (
-                      <option key={pair.grupo} value={String(pair.grupo)} disabled={!pairSelectable}>
-                        {`${pairLabel} - ${pairStatus}`}
+                      <option key={pair.grupo} value={String(pair.grupo)}>
+                        {`${pairLabel} - ${displayStatus}`}
                       </option>
                     );
                   })}
@@ -926,8 +941,16 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                     </div>
                   ) : (
                     <div className="operator-plate-selected-empty">
-                      <strong>Selecciona un par disponible</strong>
-                      <p>Elige el par desde el desplegable para ver TIRA y RETIRA antes de iniciar.</p>
+                      <strong>
+                        {selectablePairGroups.length > 0
+                          ? 'Selecciona un par disponible'
+                          : 'Sin pares disponibles'}
+                      </strong>
+                      <p>
+                        {selectablePairGroups.length > 0
+                          ? 'Elige el siguiente par disponible desde el desplegable para continuar.'
+                          : 'Todos los pares de placas disponibles ya fueron terminados o estan controlados por otro operador.'}
+                      </p>
                     </div>
                   )}
               </div>
