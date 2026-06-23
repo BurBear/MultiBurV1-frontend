@@ -124,21 +124,27 @@ export default function OrdenesProduccion() {
 
     const previousTitle = document.title;
     const code = formatOrderCode('OP', printTarget.codigo, printTarget.id).replace(/[^a-z0-9-]/gi, '_');
+    const pageStyle = document.createElement('style');
+    pageStyle.setAttribute('data-op-print-page', 'true');
+    pageStyle.textContent = '@page { size: A5 portrait; margin: 6mm; }';
     const cleanup = () => {
       document.title = previousTitle;
       document.body.classList.remove('printing-production-order');
+      pageStyle.remove();
       setPrintTarget(null);
       window.removeEventListener('afterprint', cleanup);
     };
 
     document.title = `OP_${code}`;
     document.body.classList.add('printing-production-order');
+    document.head.appendChild(pageStyle);
     window.addEventListener('afterprint', cleanup);
     const timer = window.setTimeout(() => window.print(), 150);
 
     return () => {
       window.clearTimeout(timer);
       document.body.classList.remove('printing-production-order');
+      pageStyle.remove();
       window.removeEventListener('afterprint', cleanup);
     };
   }, [printTarget]);

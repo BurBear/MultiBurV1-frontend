@@ -4254,9 +4254,9 @@ textarea {
   body.printing-production-order {
     background: #ffffff !important;
     margin: 0 !important;
-    min-height: 297mm !important;
+    min-height: 210mm !important;
     overflow: hidden !important;
-    width: 210mm !important;
+    width: 148mm !important;
   }
 
   body.printing-production-order #root {
@@ -4271,17 +4271,17 @@ textarea {
   body.printing-production-order .production-print-document {
     box-sizing: border-box !important;
     display: block !important;
-    font-size: 8.5pt !important;
-    height: 134mm !important;
+    font-size: 8.2pt !important;
+    height: auto !important;
     left: 50% !important;
     line-height: 1.2 !important;
-    max-height: 134mm !important;
+    max-height: 198mm !important;
     overflow: hidden !important;
-    padding: 5mm 6mm !important;
+    padding: 0 !important;
     position: fixed !important;
-    top: 8mm !important;
+    top: 6mm !important;
     transform: translateX(-50%) !important;
-    width: 190mm !important;
+    width: 136mm !important;
   }
 
   body.printing-production-order .production-print-header {
@@ -4290,7 +4290,7 @@ textarea {
   }
 
   body.printing-production-order .production-print-header h1 {
-    font-size: 11.5pt !important;
+    font-size: 10.8pt !important;
   }
 
   body.printing-production-order .production-print-brand .brand-logo-print {
@@ -4299,7 +4299,7 @@ textarea {
   }
 
   body.printing-production-order .production-print-code strong {
-    font-size: 10.5pt !important;
+    font-size: 10pt !important;
   }
 
   body.printing-production-order .production-print-section {
@@ -4314,8 +4314,8 @@ textarea {
   }
 
   body.printing-production-order .production-print-grid {
-    gap: 4px 12px !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 4px 10px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   body.printing-production-order .production-print-grid span {
@@ -4328,7 +4328,7 @@ textarea {
   }
 
   body.printing-production-order .production-print-wide {
-    grid-column: span 2 !important;
+    grid-column: 1 / -1 !important;
   }
 
   body.printing-production-order .production-print-footer {
