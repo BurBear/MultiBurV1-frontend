@@ -73,11 +73,11 @@ function buildPredictionPayload(values) {
 }
 
 function usesPlateGames(tipoImpresion) {
-  return ['TIRA', 'T/R', 'T+R'].includes(tipoImpresion);
+  return tipoImpresion === 'T+R';
 }
 
 function usesPairedPlateGames(tipoImpresion) {
-  return ['T/R', 'T+R'].includes(tipoImpresion);
+  return tipoImpresion === 'T+R';
 }
 
 function defaultPlateGames(tipoImpresion) {
@@ -88,16 +88,9 @@ function buildPlateGamesSummary(tipoImpresion, cantidadJuegos) {
   const total = Number(cantidadJuegos || 0);
   if (!usesPlateGames(tipoImpresion) || !Number.isInteger(total) || total <= 0) return null;
 
-  if (usesPairedPlateGames(tipoImpresion)) {
-    return {
-      title: `${total} ${total === 1 ? 'par configurado' : 'pares configurados'}`,
-      detail: `${total * 2} lados: TIRA 1A - RETIRA 1B${total > 1 ? ` hasta TIRA ${total}A - RETIRA ${total}B` : ''}`,
-    };
-  }
-
   return {
-    title: `${total} ${total === 1 ? 'tira configurada' : 'tiras configuradas'}`,
-    detail: `Se generara ${total === 1 ? 'TIRA 1A' : `desde TIRA 1A hasta TIRA ${total}A`}.`,
+    title: `${total} ${total === 1 ? 'par configurado' : 'pares configurados'}`,
+    detail: `${total * 2} lados: TIRA 1A - RETIRA 1B${total > 1 ? ` hasta TIRA ${total}A - RETIRA ${total}B` : ''}`,
   };
 }
 
@@ -257,8 +250,7 @@ export default function OrdenProduccionFormModal({
       const currentCount = Number(current.cantidad_juegos_placas);
       const shouldResetCount = !usesPlateGames(value)
         || !Number.isInteger(currentCount)
-        || currentCount <= 0
-        || (usesPairedPlateGames(value) && currentCount % 2 !== 0);
+        || currentCount <= 0;
 
       return {
         ...current,
@@ -545,9 +537,7 @@ export default function OrdenProduccionFormModal({
                 <div className="plate-games-help">
                   <span>Control por placas</span>
                   <p>
-                    {usesPairedPlateGames(values.tipo_impresion)
-                      ? 'Para T/R o T+R ingresa la cantidad de pares. Ej: 3 genera TIRA 1A/RETIRA 1B hasta TIRA 3A/RETIRA 3B.'
-                      : 'Para TIRA se genera una placa independiente por cada juego configurado. Maximo 20.'}
+                    Solo aplica para T+R. Ingresa la cantidad de pares: 1 genera TIRA 1A y RETIRA 1B.
                   </p>
                   {juegosPlacasSummary && (
                     <div className="plate-games-preview">

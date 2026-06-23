@@ -47,7 +47,12 @@ function getJuegosImpresion(produccion) {
   return asArray(produccion?.juegos_impresion);
 }
 
+function usesPlateGames(tipoImpresion) {
+  return String(tipoImpresion || '').trim().toUpperCase() === 'T+R';
+}
+
 function procesoTieneJuegosImpresion(produccion, proceso) {
+  if (!usesPlateGames(produccion?.tipo_impresion)) return false;
   const juegos = getJuegosImpresion(produccion);
   return juegos.some((juego) => String(juego.proceso_id) === String(proceso.id));
 }
@@ -177,7 +182,9 @@ export default function Dashboard() {
         .filter((proceso) => !procesoTieneJuegosImpresion(produccion, proceso))
     ));
     const activeJuegos = producciones.flatMap((produccion) => (
-      getJuegosImpresion(produccion).filter((juego) => juego.estado === ACTIVE_PROCESS_STATE)
+      usesPlateGames(produccion.tipo_impresion)
+        ? getJuegosImpresion(produccion).filter((juego) => juego.estado === ACTIVE_PROCESS_STATE)
+        : []
     ));
     const incidenciasAbiertas = data.incidencias.filter((incidencia) => incidencia.estado !== 'RESUELTA').length;
 
@@ -219,7 +226,7 @@ export default function Dashboard() {
     ));
 
     const actividadJuegos = data.ordenesProduccion.flatMap((produccion) => (
-      getJuegosImpresion(produccion)
+      (usesPlateGames(produccion.tipo_impresion) ? getJuegosImpresion(produccion) : [])
         .filter((juego) => juego.estado === ACTIVE_PROCESS_STATE && juego.operador_id)
         .map((juego) => ({
           id: `${produccion.id}-juego-${juego.id}`,

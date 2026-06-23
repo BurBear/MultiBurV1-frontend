@@ -22,9 +22,16 @@ function asArray(data) {
   return [];
 }
 
+function usesPlateGames(tipoImpresion) {
+  return String(tipoImpresion || '').trim().toUpperCase() === 'T+R';
+}
+
 function hasStartedProcesses(produccion) {
   return asArray(produccion.procesos).some((proceso) => proceso.estado !== 'PENDIENTE')
-    || asArray(produccion.juegos_impresion).some((juego) => juego.estado !== 'PENDIENTE');
+    || (
+      usesPlateGames(produccion.tipo_impresion)
+      && asArray(produccion.juegos_impresion).some((juego) => juego.estado !== 'PENDIENTE')
+    );
 }
 
 function canChangeProduccion(produccion) {

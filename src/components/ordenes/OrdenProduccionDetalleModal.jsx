@@ -17,6 +17,10 @@ function asArray(data) {
   return [];
 }
 
+function usesPlateGames(tipoImpresion) {
+  return String(tipoImpresion || '').trim().toUpperCase() === 'T+R';
+}
+
 function findById(items, id) {
   return asArray(items).find((item) => String(item.id) === String(id));
 }
@@ -365,7 +369,7 @@ export default function OrdenProduccionDetalleModal({
   const procesoActual = getProcesoActual(produccion);
   const cliente = findById(clientes, produccion.cliente_id);
   const acabados = procesos.filter((proceso) => getProcessArea(proceso) === 'ACABADOS');
-  const juegosImpresion = asArray(produccion.juegos_impresion);
+  const juegosImpresion = usesPlateGames(produccion.tipo_impresion) ? asArray(produccion.juegos_impresion) : [];
 
   return (
     <Modal

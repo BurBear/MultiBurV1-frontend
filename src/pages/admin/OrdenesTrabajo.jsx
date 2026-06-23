@@ -32,6 +32,10 @@ function asArray(data) {
   return [];
 }
 
+function usesPlateGames(tipoImpresion) {
+  return String(tipoImpresion || '').trim().toUpperCase() === 'T+R';
+}
+
 function getEntregaLabel(row) {
   return formatLocalDateTime(row.fecha_entrega_estimada);
 }
@@ -81,7 +85,10 @@ function produccionStarted(produccion) {
 function canChangeProduccion(produccion) {
   return produccion?.estado === 'PENDIENTE'
     && !asArray(produccion.procesos).some((proceso) => proceso.estado !== 'PENDIENTE')
-    && !asArray(produccion.juegos_impresion).some((juego) => juego.estado !== 'PENDIENTE');
+    && !(
+      usesPlateGames(produccion.tipo_impresion)
+      && asArray(produccion.juegos_impresion).some((juego) => juego.estado !== 'PENDIENTE')
+    );
 }
 
 function canChangeOrdenTrabajo(orden) {

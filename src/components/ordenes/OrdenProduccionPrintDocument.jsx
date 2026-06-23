@@ -9,6 +9,10 @@ function asArray(data) {
   return [];
 }
 
+function usesPlateGames(tipoImpresion) {
+  return String(tipoImpresion || '').trim().toUpperCase() === 'T+R';
+}
+
 function findById(items, id) {
   return asArray(items).find((item) => String(item.id) === String(id));
 }
@@ -51,7 +55,7 @@ export default function OrdenProduccionPrintDocument({
   const cliente = getCliente(clientes, produccion.cliente_id);
   const procesoActual = getProcesoActual(produccion);
   const acabados = getAcabados(produccion);
-  const juegosImpresion = asArray(produccion.juegos_impresion);
+  const juegosImpresion = usesPlateGames(produccion.tipo_impresion) ? asArray(produccion.juegos_impresion) : [];
   const juegosImpresionTexto = juegosImpresion.length
     ? juegosImpresion.map((juego) => juego.codigo_lado).join(' | ')
     : '-';

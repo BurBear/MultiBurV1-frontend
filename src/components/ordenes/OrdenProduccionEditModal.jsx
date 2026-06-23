@@ -16,11 +16,11 @@ function asArray(data) {
 }
 
 function usesPlateGames(tipoImpresion) {
-  return ['TIRA', 'T/R', 'T+R'].includes(tipoImpresion);
+  return tipoImpresion === 'T+R';
 }
 
 function usesPairedPlateGames(tipoImpresion) {
-  return ['T/R', 'T+R'].includes(tipoImpresion);
+  return tipoImpresion === 'T+R';
 }
 
 function defaultPlateGames(tipoImpresion) {
@@ -28,6 +28,10 @@ function defaultPlateGames(tipoImpresion) {
 }
 
 function getConfiguredPlateGames(orden) {
+  if (!usesPlateGames(orden.tipo_impresion)) {
+    return '';
+  }
+
   const juegos = asArray(orden.juegos_impresion);
   if (juegos.length === 0) {
     return defaultPlateGames(orden.tipo_impresion);
@@ -45,16 +49,9 @@ function buildPlateGamesSummary(tipoImpresion, cantidadJuegos) {
   const total = Number(cantidadJuegos || 0);
   if (!usesPlateGames(tipoImpresion) || !Number.isInteger(total) || total <= 0) return null;
 
-  if (usesPairedPlateGames(tipoImpresion)) {
-    return {
-      title: `${total} ${total === 1 ? 'par configurado' : 'pares configurados'}`,
-      detail: `${total * 2} lados: TIRA 1A - RETIRA 1B${total > 1 ? ` hasta TIRA ${total}A - RETIRA ${total}B` : ''}`,
-    };
-  }
-
   return {
-    title: `${total} ${total === 1 ? 'tira configurada' : 'tiras configuradas'}`,
-    detail: `Se generara ${total === 1 ? 'TIRA 1A' : `desde TIRA 1A hasta TIRA ${total}A`}.`,
+    title: `${total} ${total === 1 ? 'par configurado' : 'pares configurados'}`,
+    detail: `${total * 2} lados: TIRA 1A - RETIRA 1B${total > 1 ? ` hasta TIRA ${total}A - RETIRA ${total}B` : ''}`,
   };
 }
 
@@ -249,9 +246,7 @@ export default function OrdenProduccionEditModal({
                 <div className="plate-games-help">
                   <span>Control por placas</span>
                   <p>
-                    {usesPairedPlateGames(values.tipo_impresion)
-                      ? 'Para T/R o T+R define la cantidad de pares que se regeneraran antes de iniciar la OP.'
-                      : 'Para TIRA se genera una placa independiente por cada juego configurado. Maximo 20.'}
+                    Solo aplica para T+R. Define la cantidad de pares que se regeneraran antes de iniciar la OP.
                   </p>
                   {juegosPlacasSummary && (
                     <div className="plate-games-preview">

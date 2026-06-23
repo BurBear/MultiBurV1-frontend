@@ -54,6 +54,10 @@ function getJuegosImpresion(produccion) {
   return asArray(produccion?.juegos_impresion);
 }
 
+function usesPlateGames(tipoImpresion) {
+  return String(tipoImpresion || '').trim().toUpperCase() === 'T+R';
+}
+
 function getCurrentJuego(juegos, userId) {
   return asArray(juegos).find((juego) => isActiveJuego(juego) && sameId(juego.operador_id, userId)) || null;
 }
@@ -132,7 +136,7 @@ function getOperatorAreaRows(produccion, area) {
   if (area === 'IMPRESION') {
     const juegos = getJuegosImpresion(produccion);
     const impresionProceso = areaProcesos.find(({ proceso }) => getProcessArea(proceso) === 'IMPRESION');
-    if (juegos.length > 0 && impresionProceso) {
+    if (usesPlateGames(produccion.tipo_impresion) && juegos.length > 0 && impresionProceso) {
       const procesoAnterior = impresionProceso.procesoIndex > 0 ? procesos[impresionProceso.procesoIndex - 1] : null;
       const puedeIniciar = !procesoAnterior || procesoAnterior.estado === 'TERMINADO';
 
