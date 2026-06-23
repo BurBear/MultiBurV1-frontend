@@ -126,16 +126,19 @@ export default function OrdenesProduccion() {
     const code = formatOrderCode('OP', printTarget.codigo, printTarget.id).replace(/[^a-z0-9-]/gi, '_');
     const cleanup = () => {
       document.title = previousTitle;
+      document.body.classList.remove('printing-production-order');
       setPrintTarget(null);
       window.removeEventListener('afterprint', cleanup);
     };
 
     document.title = `OP_${code}`;
+    document.body.classList.add('printing-production-order');
     window.addEventListener('afterprint', cleanup);
     const timer = window.setTimeout(() => window.print(), 150);
 
     return () => {
       window.clearTimeout(timer);
+      document.body.classList.remove('printing-production-order');
       window.removeEventListener('afterprint', cleanup);
     };
   }, [printTarget]);

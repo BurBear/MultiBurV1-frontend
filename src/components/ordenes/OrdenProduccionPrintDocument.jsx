@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { formatLocalDateTime } from '../../utils/datetime';
 import { formatNumber, formatOrderCode, formatStatus } from '../../utils/formatters';
 import { getProcessArea } from '../../utils/procesos';
@@ -63,7 +64,7 @@ export default function OrdenProduccionPrintDocument({
     ? `${formatNumber(produccion.cantidad)} + ${formatNumber(produccion.demasia)}`
     : formatNumber(produccion.cantidad);
 
-  return (
+  const documentContent = (
     <article className="print-document production-print-document" aria-hidden="true">
       <header className="production-print-header">
         <div className="print-brand production-print-brand">
@@ -178,4 +179,6 @@ export default function OrdenProduccionPrintDocument({
       <footer className="production-print-footer">Orden interna MultiBur</footer>
     </article>
   );
+
+  return createPortal(documentContent, document.body);
 }

@@ -662,16 +662,19 @@ export default function OrdenesTrabajo() {
     const code = formatOrderCode('OP', printProduccionTarget.codigo, printProduccionTarget.id).replace(/[^a-z0-9-]/gi, '_');
     const cleanup = () => {
       document.title = previousTitle;
+      document.body.classList.remove('printing-production-order');
       setPrintProduccionTarget(null);
       window.removeEventListener('afterprint', cleanup);
     };
 
     document.title = `OP_${code}`;
+    document.body.classList.add('printing-production-order');
     window.addEventListener('afterprint', cleanup);
     const timer = window.setTimeout(() => window.print(), 150);
 
     return () => {
       window.clearTimeout(timer);
+      document.body.classList.remove('printing-production-order');
       window.removeEventListener('afterprint', cleanup);
     };
   }, [printProduccionTarget]);
