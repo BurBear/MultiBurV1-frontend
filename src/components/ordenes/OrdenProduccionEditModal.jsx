@@ -11,6 +11,65 @@ function optionLabel(item) {
   return item.nombre || item.codigo || `ID ${item.id}`;
 }
 
+function asArray(data) {
+  return Array.isArray(data) ? data : [];
+}
+
+function usesPlateGames(tipoImpresion) {
+  return ['TIRA', 'T/R', 'T+R'].includes(tipoImpresion);
+}
+
+function usesPairedPlateGames(tipoImpresion) {
+  return ['T/R', 'T+R'].includes(tipoImpresion);
+}
+
+function defaultPlateGames(tipoImpresion) {
+  return usesPlateGames(tipoImpresion) ? 1 : '';
+}
+
+function getConfiguredPlateGames(orden) {
+  const juegos = asArray(orden.juegos_impresion);
+  if (juegos.length === 0) {
+    return defaultPlateGames(orden.tipo_impresion);
+  }
+
+  if (usesPairedPlateGames(orden.tipo_impresion)) {
+    const groups = new Set(juegos.map((juego) => juego.grupo_par).filter(Boolean));
+    return groups.size || defaultPlateGames(orden.tipo_impresion);
+  }
+
+  return juegos.length;
+}
+
+function buildPlateGamesSummary(tipoImpresion, cantidadJuegos) {
+  const total = Number(cantidadJuegos || 0);
+  if (!usesPlateGames(tipoImpresion) || !Number.isInteger(total) || total <= 0) return null;
+
+  if (usesPairedPlateGames(tipoImpresion)) {
+    return {
+      title: `${total} ${total === 1 ? 'par configurado' : 'pares configurados'}`,
+      detail: `${total * 2} lados: TIRA 1A - RETIRA 1B${total > 1 ? ` hasta TIRA ${total}A - RETIRA ${total}B` : ''}`,
+    };
+  }
+
+  return {
+    title: `${total} ${total === 1 ? 'tira configurada' : 'tiras configuradas'}`,
+    detail: `Se generara ${total === 1 ? 'TIRA 1A' : `desde TIRA 1A hasta TIRA ${total}A`}.`,
+  };
+}
+
+function validatePlateGames(nextErrors, values) {
+  if (!usesPlateGames(values.tipo_impresion)) return;
+  const value = Number(values.cantidad_juegos_placas);
+  if (!Number.isInteger(value) || value <= 0) {
+    nextErrors.cantidad_juegos_placas = 'Ingresa una cantidad valida de juegos de placas.';
+    return;
+  }
+  if (value > 20) {
+    nextErrors.cantidad_juegos_placas = 'El maximo permitido es 20.';
+  }
+}
+
 export default function OrdenProduccionEditModal({
   orden,
   materiales,
@@ -29,14 +88,28 @@ export default function OrdenProduccionEditModal({
     maquina_id: orden.maquina_id || '',
     modo_color: orden.modo_color || 'F/C',
     tipo_impresion: orden.tipo_impresion || '',
+    cantidad_juegos_placas: getConfiguredPlateGames(orden),
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const usaJuegosPlacas = usesPlateGames(values.tipo_impresion);
+  const juegosPlacasSummary = buildPlateGamesSummary(values.tipo_impresion, values.cantidad_juegos_placas);
 
   const setValue = (name, value) => {
     setValues((current) => ({ ...current, [name]: value }));
     setErrors((current) => ({ ...current, [name]: '' }));
+  };
+
+  const setTipoImpresion = (value) => {
+    setValues((current) => ({
+      ...current,
+      tipo_impresion: value,
+      cantidad_juegos_placas: usesPlateGames(value)
+        ? current.cantidad_juegos_placas || defaultPlateGames(value)
+        : '',
+    }));
+    setErrors((current) => ({ ...current, tipo_impresion: '', cantidad_juegos_placas: '' }));
   };
 
   const handleSubmit = async (event) => {
@@ -52,6 +125,7 @@ export default function OrdenProduccionEditModal({
     if (!values.formato_id) nextErrors.formato_id = 'Selecciona un formato.';
     if (!values.maquina_id) nextErrors.maquina_id = 'Selecciona una maquina sugerida.';
     if (!values.tipo_impresion) nextErrors.tipo_impresion = 'Selecciona el tipo de impresion.';
+    validatePlateGames(nextErrors, values);
 
     if (hasErrors(nextErrors)) {
       setErrors(nextErrors);
@@ -68,6 +142,7 @@ export default function OrdenProduccionEditModal({
       maquina_id: values.maquina_id ? Number(values.maquina_id) : null,
       modo_color: values.modo_color || null,
       tipo_impresion: values.tipo_impresion || null,
+      cantidad_juegos_placas: usaJuegosPlacas ? Number(values.cantidad_juegos_placas) : null,
     };
 
     setSaving(true);
@@ -149,13 +224,44 @@ export default function OrdenProduccionEditModal({
               </Select>
             </div>
 
-            <Select label="Tipo de impresion" name="tipo_impresion" value={values.tipo_impresion} onChange={(event) => setValue('tipo_impresion', event.target.value)} error={errors.tipo_impresion}>
+            <Select label="Tipo de impresion" name="tipo_impresion" value={values.tipo_impresion} onChange={(event) => setTipoImpresion(event.target.value)} error={errors.tipo_impresion}>
               <option value="">Sin tipo</option>
               <option value="TIRA">TIRA</option>
               <option value="T/R">T/R</option>
               <option value="T+R">T+R</option>
               <option value="DOBLE PINZA">DOBLE PINZA</option>
             </Select>
+
+            {usaJuegosPlacas && (
+              <div className="plate-games-summary">
+                <Input
+                  label={usesPairedPlateGames(values.tipo_impresion) ? 'Pares de placas' : 'Juegos de placas'}
+                  name="cantidad_juegos_placas"
+                  type="number"
+                  min="1"
+                  max="20"
+                  step="1"
+                  value={values.cantidad_juegos_placas}
+                  onChange={(event) => setValue('cantidad_juegos_placas', event.target.value)}
+                  error={errors.cantidad_juegos_placas}
+                  required
+                />
+                <div className="plate-games-help">
+                  <span>Control por placas</span>
+                  <p>
+                    {usesPairedPlateGames(values.tipo_impresion)
+                      ? 'Para T/R o T+R define la cantidad de pares que se regeneraran antes de iniciar la OP.'
+                      : 'Para TIRA se genera una placa independiente por cada juego configurado. Maximo 20.'}
+                  </p>
+                  {juegosPlacasSummary && (
+                    <div className="plate-games-preview">
+                      <strong>{juegosPlacasSummary.title}</strong>
+                      <small>{juegosPlacasSummary.detail}</small>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
         </div>
 

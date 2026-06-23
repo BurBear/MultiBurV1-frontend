@@ -1659,6 +1659,7 @@ textarea {
 
 .production-board-row {
   align-items: start;
+  border-left: 4px solid rgba(148, 163, 184, 0.5);
   display: grid;
   gap: 0.9rem;
   grid-template-columns:
@@ -1675,6 +1676,14 @@ textarea {
     minmax(112px, 0.75fr);
   min-width: 1380px;
   padding: 0.85rem 0.95rem;
+}
+
+.production-board-row-cliente-directo {
+  border-left-color: rgba(34, 197, 94, 0.95);
+}
+
+.production-board-row-cliente-servicio {
+  border-left-color: rgba(245, 158, 11, 0.95);
 }
 
 .production-board-row-alert {
@@ -1717,6 +1726,20 @@ textarea {
 
 .production-board-actions .btn {
   width: 100%;
+}
+
+.production-board-client-type {
+  align-content: start;
+}
+
+.client-type-badge {
+  justify-self: stretch;
+  min-width: 88px;
+}
+
+.client-type-badge-servicio {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fde68a;
 }
 
 .work-order-productions,

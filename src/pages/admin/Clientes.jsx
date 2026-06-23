@@ -9,12 +9,18 @@ const estadoOptions = [
   { value: 'INACTIVO', label: 'INACTIVO' },
 ];
 
+const tipoClienteOptions = [
+  { value: 'DIRECTO', label: 'DIRECTO' },
+  { value: 'SERVICIO', label: 'SERVICIO' },
+];
+
 const fields = [
   { name: 'nombre', label: 'Nombre', required: true },
   { name: 'documento', label: 'Documento' },
   { name: 'telefono', label: 'Telefono' },
   { name: 'correo', label: 'Correo', type: 'email' },
   { name: 'direccion', label: 'Direccion', type: 'textarea' },
+  { name: 'tipo_cliente', label: 'Tipo de cliente', type: 'select', options: tipoClienteOptions, defaultValue: 'DIRECTO', required: true },
   { name: 'requiere_orden_compra', label: 'Trabaja con orden de compra (OC)', type: 'checkbox', defaultValue: false },
   { name: 'estado', label: 'Estado', type: 'select', options: estadoOptions, defaultValue: 'ACTIVO' },
 ];
@@ -24,6 +30,15 @@ const columns = [
   { key: 'documento', label: 'Documento' },
   { key: 'telefono', label: 'Telefono' },
   { key: 'correo', label: 'Correo' },
+  {
+    key: 'tipo_cliente',
+    label: 'Tipo',
+    render: (row) => {
+      const tipo = row.tipo_cliente === 'SERVICIO' ? 'SERVICIO' : 'DIRECTO';
+      return <Badge tone={tipo === 'SERVICIO' ? 'info' : 'success'}>{tipo}</Badge>;
+    },
+    searchValue: (row) => row.tipo_cliente || 'DIRECTO',
+  },
   {
     key: 'requiere_orden_compra',
     label: 'OC',

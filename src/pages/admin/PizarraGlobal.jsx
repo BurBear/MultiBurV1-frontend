@@ -209,6 +209,14 @@ function getOpenIncidencias(incidencias) {
   return asArray(incidencias).filter((incidencia) => incidencia.estado !== 'RESUELTA');
 }
 
+function getClientType(value) {
+  return String(value || 'DIRECTO').trim().toUpperCase() === 'SERVICIO' ? 'SERVICIO' : 'DIRECTO';
+}
+
+function getClientTypeTone(tipoCliente) {
+  return tipoCliente === 'SERVICIO' ? 'info' : 'success';
+}
+
 function isAdminProcess(tipoProceso) {
   const normalized = normalize(tipoProceso);
   return normalized.startsWith('dise') || normalized === 'placas';
@@ -237,7 +245,9 @@ function ProductionMiniRow({
 }) {
   const material = catalogs.materiales[produccion.material_id]?.nombre || '-';
   const formato = catalogs.formatos[produccion.formato_id]?.nombre || '-';
-  const cliente = catalogs.clientes[produccion.cliente_id]?.nombre || fallbackCliente || `Cliente #${produccion.cliente_id}`;
+  const clienteRecord = catalogs.clientes[produccion.cliente_id];
+  const cliente = clienteRecord?.nombre || fallbackCliente || `Cliente #${produccion.cliente_id}`;
+  const tipoCliente = getClientType(clienteRecord?.tipo_cliente);
   const maquina = catalogs.maquinas[produccion.maquina_id]?.nombre || 'Sin maquina';
   const entrega = formatLocalDateTimeParts(produccion.fecha_entrega_estimada || produccion.fecha_entrega);
   const procesos = asArray(produccion.procesos);
@@ -249,7 +259,7 @@ function ProductionMiniRow({
   const adminControlPending = adminProcesses.some((proceso) => proceso.estado !== 'TERMINADO');
 
   return (
-    <div className={`production-board-row ${abiertas.length ? 'production-board-row-alert' : ''}`}>
+    <div className={`production-board-row production-board-row-cliente-${tipoCliente.toLowerCase()} ${abiertas.length ? 'production-board-row-alert' : ''}`}>
       <div>
         <span>Orden</span>
         <strong>{formatOrderCode('OP', produccion.codigo, produccion.id)}</strong>
@@ -297,15 +307,16 @@ function ProductionMiniRow({
         <span>Maquina</span>
         <strong>{maquina}</strong>
       </div>
-      <div className="production-board-actions">
-        <span>Admin</span>
+      <div className="production-board-actions production-board-client-type">
+        <span>Tipo cliente</span>
+        <Badge tone={getClientTypeTone(tipoCliente)} className={`client-type-badge client-type-badge-${tipoCliente.toLowerCase()}`}>
+          {tipoCliente}
+        </Badge>
         {hasAdminProcesses ? (
           <Button size="sm" variant="outline" onClick={() => onOpenAdminControl?.(produccion, fallbackCliente)}>
             {adminControlPending ? 'Control' : 'Ver'}
           </Button>
-        ) : (
-          <small>-</small>
-        )}
+        ) : null}
       </div>
     </div>
   );
