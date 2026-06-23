@@ -4150,7 +4150,13 @@ textarea {
   }
 
   .production-print-document {
-    font-size: 10pt;
+    box-sizing: border-box;
+    font-size: 8pt;
+    height: 148mm;
+    max-height: 148mm;
+    overflow: hidden;
+    padding: 0;
+    width: 100%;
   }
 
   .production-print-header {
@@ -4158,77 +4164,90 @@ textarea {
     border-bottom: 2px solid #16a34a;
     display: flex;
     justify-content: space-between;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
   }
 
   .production-print-header h1 {
-    font-size: 13pt;
+    font-size: 10.5pt;
     margin: 0;
   }
 
   .production-print-header p,
   .production-print-code span {
     color: #4b5563 !important;
-    font-size: 8pt;
+    font-size: 6.8pt;
     margin: 0;
+  }
+
+  .production-print-brand {
+    gap: 6px;
+  }
+
+  .production-print-brand .brand-logo-print {
+    height: 26px;
+    width: 26px;
   }
 
   .production-print-code {
     display: grid;
-    gap: 0.25rem;
+    gap: 1px;
     text-align: right;
   }
 
   .production-print-code strong {
-    font-size: 12pt;
+    font-size: 10pt;
   }
 
   .production-print-section {
     border: 1px solid #cfd6df;
-    border-radius: 7px;
+    border-radius: 5px;
     break-inside: avoid;
-    margin-top: 6px;
-    padding: 9px;
+    margin-top: 4px;
+    padding: 5px 7px;
   }
 
   .production-print-section h2 {
     color: #374151 !important;
-    font-size: 8.5pt;
+    font-size: 6.8pt;
     letter-spacing: 0.04em;
-    margin: 0 0 8px;
+    margin: 0 0 4px;
     text-transform: uppercase;
   }
 
   .production-print-grid {
     display: grid;
-    gap: 7px 24px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 14px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .production-print-grid div {
     display: grid;
-    gap: 1px;
+    gap: 0;
+    min-width: 0;
   }
 
   .production-print-grid span {
     color: #4b5563 !important;
-    font-size: 8.5pt;
+    font-size: 6.7pt;
+    line-height: 1.15;
   }
 
   .production-print-grid strong {
     color: #020617 !important;
-    font-size: 10pt;
+    font-size: 8pt;
+    line-height: 1.18;
+    overflow-wrap: anywhere;
   }
 
   .production-print-wide {
-    grid-column: 1 / -1;
+    grid-column: span 2;
   }
 
   .production-print-footer {
     color: #6b7280 !important;
-    font-size: 8pt;
-    margin-top: 10px;
+    font-size: 6.8pt;
+    margin-top: 4px;
     text-align: right;
   }
 }
