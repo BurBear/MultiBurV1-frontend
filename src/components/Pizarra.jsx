@@ -741,6 +741,12 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const selectedPair = pairGroups.find((pair) => String(pair.grupo) === String(selectedPairKey));
 
     const finalizarProceso = (targetJuego = null) => {
+      const juegoParaCerrar = targetJuego
+        && typeof targetJuego === 'object'
+        && Number.isFinite(Number(targetJuego.id))
+        ? targetJuego
+        : null;
+
       if (necesitaCantidades) {
         const nextErrors = emptyCierreErrors();
         const cantidadBuenaTexto = cierreCantidades.cantidad_buena;
@@ -797,8 +803,8 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
           cantidad_buena: cantidadBuena,
           cantidad_mala: cantidadMala,
         };
-        if (targetJuego) {
-          handleJuegoAction(targetJuego.id, 'finalizar', payload);
+        if (juegoParaCerrar) {
+          handleJuegoAction(juegoParaCerrar.id, 'finalizar', payload);
         } else {
           handleAction(produccion.id, proceso.tipo_proceso, 'finalizar', payload);
         }
@@ -1141,7 +1147,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                           </Button>
                           <Button
                             variant="success"
-                            onClick={finalizarProceso}
+                            onClick={() => finalizarProceso()}
                             disabled={isBusy || actionsLocked}
                           >
                             Finalizar
