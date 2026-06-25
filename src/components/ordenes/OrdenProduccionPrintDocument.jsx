@@ -44,16 +44,39 @@ function getProcesoActual(produccion) {
   );
 }
 
+function getOrdenTrabajoVinculada(produccion, ordenesTrabajo, ordenTrabajoRelacionada) {
+  if (!produccion?.orden_trabajo_id) return null;
+  if (ordenTrabajoRelacionada && String(ordenTrabajoRelacionada.id) === String(produccion.orden_trabajo_id)) {
+    return ordenTrabajoRelacionada;
+  }
+  return (
+    produccion.orden_trabajo
+    || findById(ordenesTrabajo, produccion.orden_trabajo_id)
+    || null
+  );
+}
+
+function getOrdenTrabajoCodigo(produccion, ordenTrabajo) {
+  if (!produccion?.orden_trabajo_id) return '-';
+  return ordenTrabajo
+    ? formatOrderCode('OT', ordenTrabajo.codigo, ordenTrabajo.id)
+    : produccion.orden_trabajo_codigo || `OT #${produccion.orden_trabajo_id}`;
+}
+
 export default function OrdenProduccionPrintDocument({
   produccion,
   clientes = [],
   materiales = [],
   formatos = [],
   maquinas = [],
+  ordenesTrabajo = [],
+  ordenTrabajoRelacionada = null,
 }) {
   if (!produccion) return null;
 
   const cliente = getCliente(clientes, produccion.cliente_id);
+  const ordenTrabajo = getOrdenTrabajoVinculada(produccion, ordenesTrabajo, ordenTrabajoRelacionada);
+  const ordenTrabajoCodigo = getOrdenTrabajoCodigo(produccion, ordenTrabajo);
   const procesoActual = getProcesoActual(produccion);
   const acabados = getAcabados(produccion);
   const juegosImpresion = usesPlateGames(produccion.tipo_impresion) ? asArray(produccion.juegos_impresion) : [];
@@ -109,7 +132,7 @@ export default function OrdenProduccionPrintDocument({
           </div>
           <div>
             <span>Orden de trabajo</span>
-            <strong>{produccion.orden_trabajo_id ? `OT #${produccion.orden_trabajo_id}` : '-'}</strong>
+            <strong>{ordenTrabajoCodigo}</strong>
           </div>
           <div>
             <span>Servicio</span>
@@ -178,15 +201,15 @@ export default function OrdenProduccionPrintDocument({
 
       {produccion.orden_trabajo_id && (
         <section className="production-print-section">
-          <h2>Orden de produccion vinculada</h2>
+          <h2>Orden de trabajo vinculada</h2>
           <div className="production-print-grid">
             <div>
-              <span>Codigo OP</span>
-              <strong>{formatOrderCode('OP', produccion.codigo, produccion.id)}</strong>
+              <span>Codigo OT</span>
+              <strong>{ordenTrabajoCodigo}</strong>
             </div>
             <div className="production-print-wide">
-              <span>Descripcion OP</span>
-              <strong>{produccion.descripcion || '-'}</strong>
+              <span>Descripcion OT</span>
+              <strong>{ordenTrabajo?.descripcion || '-'}</strong>
             </div>
           </div>
         </section>

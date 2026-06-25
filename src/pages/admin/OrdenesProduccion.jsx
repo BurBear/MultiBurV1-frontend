@@ -382,6 +382,7 @@ export default function OrdenesProduccion() {
           materiales={materiales}
           formatos={formatos}
           maquinas={maquinas}
+          ordenesTrabajo={ordenesTrabajo}
         />
       )}
     </div>

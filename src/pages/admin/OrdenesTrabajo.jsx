@@ -1152,6 +1152,7 @@ export default function OrdenesTrabajo() {
           materiales={materiales}
           formatos={formatos}
           maquinas={maquinas}
+          ordenTrabajoRelacionada={selected}
         />
       )}
 
