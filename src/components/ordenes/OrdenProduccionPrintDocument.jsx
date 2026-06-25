@@ -176,6 +176,22 @@ export default function OrdenProduccionPrintDocument({
         </div>
       </section>
 
+      {produccion.orden_trabajo_id && (
+        <section className="production-print-section">
+          <h2>Orden de produccion vinculada</h2>
+          <div className="production-print-grid">
+            <div>
+              <span>Codigo OP</span>
+              <strong>{formatOrderCode('OP', produccion.codigo, produccion.id)}</strong>
+            </div>
+            <div className="production-print-wide">
+              <span>Descripcion OP</span>
+              <strong>{produccion.descripcion || '-'}</strong>
+            </div>
+          </div>
+        </section>
+      )}
+
       <footer className="production-print-footer">Orden interna MultiBur</footer>
     </article>
   );
