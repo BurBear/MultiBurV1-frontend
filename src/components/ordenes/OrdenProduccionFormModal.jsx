@@ -223,6 +223,7 @@ export default function OrdenProduccionFormModal({
     ruta_acabados: [],
     estado: 'PENDIENTE',
     observaciones: '',
+    observacion_acabados: '',
   });
   const [picker, setPicker] = useState(null);
   const [routeModalOpen, setRouteModalOpen] = useState(false);
@@ -361,6 +362,9 @@ export default function OrdenProduccionFormModal({
     if (values.maquina_id) payload.maquina_id = Number(values.maquina_id);
     if (usaJuegosPlacas) payload.cantidad_juegos_placas = Number(values.cantidad_juegos_placas);
     if (values.observaciones.trim()) payload.observaciones = values.observaciones.trim();
+    if (values.observacion_acabados.trim()) {
+      payload.observacion_acabados = values.observacion_acabados.trim();
+    }
     if (values.tipo_servicio === 'PERSONALIZADO') {
       payload.procesos_personalizados = values.procesos_personalizados;
     }
@@ -606,6 +610,17 @@ export default function OrdenProduccionFormModal({
                 onChange={(event) => setValue('observaciones', event.target.value)}
                 rows={3}
                 placeholder="Indicaciones de impresion"
+              />
+            </label>
+
+            <label className="field">
+              <span className="field-label">Observacion acabados</span>
+              <textarea
+                className="input textarea"
+                value={values.observacion_acabados}
+                onChange={(event) => setValue('observacion_acabados', event.target.value)}
+                rows={3}
+                placeholder="Indicaciones para acabados"
               />
             </label>
 

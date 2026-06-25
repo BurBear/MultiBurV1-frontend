@@ -86,6 +86,8 @@ export default function OrdenProduccionEditModal({
     modo_color: orden.modo_color || 'F/C',
     tipo_impresion: orden.tipo_impresion || '',
     cantidad_juegos_placas: getConfiguredPlateGames(orden),
+    observaciones: orden.observaciones || '',
+    observacion_acabados: orden.observacion_acabados || '',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -140,6 +142,8 @@ export default function OrdenProduccionEditModal({
       modo_color: values.modo_color || null,
       tipo_impresion: values.tipo_impresion || null,
       cantidad_juegos_placas: usaJuegosPlacas ? Number(values.cantidad_juegos_placas) : null,
+      observaciones: values.observaciones.trim() || null,
+      observacion_acabados: values.observacion_acabados.trim() || null,
     };
 
     setSaving(true);
@@ -257,6 +261,28 @@ export default function OrdenProduccionEditModal({
                 </div>
               </div>
             )}
+
+            <label className="field">
+              <span className="field-label">Observacion tecnica</span>
+              <textarea
+                className="input textarea"
+                value={values.observaciones}
+                onChange={(event) => setValue('observaciones', event.target.value)}
+                rows={3}
+                placeholder="Indicaciones de impresion"
+              />
+            </label>
+
+            <label className="field">
+              <span className="field-label">Observacion acabados</span>
+              <textarea
+                className="input textarea"
+                value={values.observacion_acabados}
+                onChange={(event) => setValue('observacion_acabados', event.target.value)}
+                rows={3}
+                placeholder="Indicaciones para acabados"
+              />
+            </label>
           </section>
         </div>
 
