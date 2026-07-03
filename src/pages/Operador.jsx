@@ -5,7 +5,6 @@ import * as formatosService from '../services/formatosService';
 import * as maquinasService from '../services/maquinasService';
 import * as materialesService from '../services/materialesService';
 import * as ordenesProduccionService from '../services/ordenesProduccionService';
-import * as ordenesTrabajoService from '../services/ordenesTrabajoService';
 import { getProcessArea } from '../utils/procesos';
 import { getStationFromRole } from '../utils/roles';
 
@@ -15,42 +14,14 @@ function asArray(data) {
   return [];
 }
 
-function mergeOrdenesProduccion(ordenesProduccionData, ordenesTrabajoData) {
-  const byId = new Map();
-
-  const addProduccion = (produccion, ordenTrabajo = null) => {
-    if (!produccion?.id) return;
-
-    const normalized = {
-      ...produccion,
-      orden_trabajo_id: produccion.orden_trabajo_id ?? ordenTrabajo?.id ?? null,
-      orden_trabajo_codigo: produccion.orden_trabajo_codigo || ordenTrabajo?.codigo || null,
-      orden_trabajo_nombre: produccion.orden_trabajo_nombre || ordenTrabajo?.nombre || null,
-    };
-    const key = String(normalized.id);
-    const current = byId.get(key);
-
-    if (!current) {
-      byId.set(key, normalized);
-      return;
-    }
-
-    byId.set(key, {
-      ...normalized,
-      ...current,
-      procesos: asArray(current.procesos).length ? current.procesos : normalized.procesos,
-      orden_trabajo_id: current.orden_trabajo_id ?? normalized.orden_trabajo_id,
-      orden_trabajo_codigo: current.orden_trabajo_codigo || normalized.orden_trabajo_codigo,
-      orden_trabajo_nombre: current.orden_trabajo_nombre || normalized.orden_trabajo_nombre,
-    });
-  };
-
-  asArray(ordenesProduccionData).forEach((produccion) => addProduccion(produccion));
-  asArray(ordenesTrabajoData).forEach((ordenTrabajo) => {
-    asArray(ordenTrabajo.ordenes_produccion).forEach((produccion) => addProduccion(produccion, ordenTrabajo));
-  });
-
-  return Array.from(byId.values());
+function normalizeOrdenesProduccion(ordenesProduccionData) {
+  return asArray(ordenesProduccionData).map((produccion) => ({
+    ...produccion,
+    procesos: asArray(produccion.procesos),
+    juegos_impresion: asArray(produccion.juegos_impresion),
+    orden_trabajo_id: produccion.orden_trabajo_id ?? null,
+    orden_trabajo_codigo: produccion.orden_trabajo_codigo || null,
+  }));
 }
 
 export default function Operador({ user, menuOpen, setMenuOpen }) {
@@ -78,21 +49,19 @@ export default function Operador({ user, menuOpen, setMenuOpen }) {
     try {
       const [
         ordenesData,
-        ordenesTrabajoData,
         clientesData,
         materialesData,
         formatosData,
         maquinasData,
       ] = await Promise.all([
-        ordenesProduccionService.listarOrdenesProduccion(),
-        ordenesTrabajoService.listarOrdenesTrabajo(),
+        ordenesProduccionService.listarOrdenesProduccionResumen(),
         clientesService.listar(),
         materialesService.listar(),
         formatosService.listar(),
         maquinasService.listar(),
       ]);
 
-      setOrdenes(mergeOrdenesProduccion(ordenesData, ordenesTrabajoData));
+      setOrdenes(normalizeOrdenesProduccion(ordenesData));
       setCatalogs({
         clientes: asArray(clientesData),
         materiales: asArray(materialesData),
