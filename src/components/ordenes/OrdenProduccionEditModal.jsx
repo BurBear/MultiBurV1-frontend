@@ -6,6 +6,15 @@ import Select from '../ui/Select';
 import { toPeruDateTimeInputValue } from '../../utils/datetime';
 import { formatOrderCode } from '../../utils/formatters';
 import { hasErrors, isBlank, validateNonNegativeNumber, validatePositiveNumber } from '../../utils/validation';
+import {
+  ACABADOS_ROUTE_OPTIONS,
+  BASE_PROCESS_TYPES,
+  PLASTIFICADO_MODE_OPTIONS,
+  PLASTIFICADO_OPTION,
+  getProcessArea,
+  isPlastificadoProcess,
+  serviceIncludesAcabados,
+} from '../../utils/procesos';
 
 function optionLabel(item) {
   return item.nombre || item.codigo || `ID ${item.id}`;
@@ -67,6 +76,126 @@ function validatePlateGames(nextErrors, values) {
   }
 }
 
+function processType(proceso) {
+  return proceso?.tipo_proceso || proceso;
+}
+
+function getProcesosPersonalizadosFromOrden(orden) {
+  if (orden.tipo_servicio !== 'PERSONALIZADO') return [];
+
+  const procesos = [];
+  let hasAcabados = false;
+  asArray(orden.procesos).forEach((proceso) => {
+    const tipo = processType(proceso);
+    if (getProcessArea(proceso) === 'ACABADOS') {
+      hasAcabados = true;
+      return;
+    }
+    if (tipo && !procesos.includes(tipo)) {
+      procesos.push(tipo);
+    }
+  });
+
+  if (hasAcabados && !procesos.includes('ACABADOS')) {
+    procesos.push('ACABADOS');
+  }
+  return procesos;
+}
+
+function getRutaAcabadosFromOrden(orden) {
+  return asArray(orden.procesos)
+    .filter((proceso) => getProcessArea(proceso) === 'ACABADOS')
+    .map(processType)
+    .filter(Boolean);
+}
+
+function AcabadosRouteModal({ rutaAcabados, onToggle, onMove, onClear, onClose, onPlastificadoModeChange }) {
+  const plastificadoValue = rutaAcabados.find((acabado) => isPlastificadoProcess(acabado));
+  const plastificadoMode = PLASTIFICADO_MODE_OPTIONS.some((option) => option.value === plastificadoValue)
+    ? plastificadoValue
+    : PLASTIFICADO_MODE_OPTIONS[0].value;
+
+  return (
+    <Modal
+      title="Ruta de acabados"
+      onClose={onClose}
+      panelClassName="modal-panel-wide finish-route-modal"
+      headerMeta={<span>{rutaAcabados.length} acabados</span>}
+    >
+      <div className="finish-route-modal-grid">
+        <section className="finish-route-modal-section">
+          <h3>Procesos disponibles</h3>
+          <p>Marca los acabados que aplican a esta orden de produccion.</p>
+          <div className="finish-route-options">
+            {ACABADOS_ROUTE_OPTIONS.map((acabado) => {
+              const isPlastificado = acabado === PLASTIFICADO_OPTION;
+              const checked = isPlastificado
+                ? rutaAcabados.some((item) => isPlastificadoProcess(item))
+                : rutaAcabados.includes(acabado);
+
+              return (
+                <div key={acabado} className={`finish-route-option ${checked ? 'finish-route-option-active' : ''}`}>
+                  <label className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onToggle(acabado)}
+                    />
+                    {acabado}
+                  </label>
+                  {isPlastificado && checked && (
+                    <label className="finish-route-plastificado-mode">
+                      <span>Modo de plastificado</span>
+                      <select
+                        className="input"
+                        value={plastificadoMode}
+                        onChange={(event) => onPlastificadoModeChange(event.target.value)}
+                      >
+                        {PLASTIFICADO_MODE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="finish-route-modal-section">
+          <h3>Secuencia de trabajo</h3>
+          <p>El operador de acabados vera cada proceso cuando el anterior este terminado.</p>
+          <div className="finish-route-sequence">
+            <span>Secuencia definida</span>
+            {rutaAcabados.length === 0 ? (
+              <p className="muted">Selecciona acabados para definir la ruta.</p>
+            ) : (
+              rutaAcabados.map((acabado, index) => (
+                <div key={acabado} className="finish-route-step">
+                  <strong>{index + 1}</strong>
+                  <span>{acabado}</span>
+                  <button type="button" onClick={() => onMove(index, -1)} disabled={index === 0}>Subir</button>
+                  <button type="button" onClick={() => onMove(index, 1)} disabled={index === rutaAcabados.length - 1}>Bajar</button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="form-actions">
+        <Button variant="outline" onClick={onClear} disabled={rutaAcabados.length === 0}>
+          Restablecer
+        </Button>
+        <Button onClick={onClose}>
+          Usar esta ruta
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
 export default function OrdenProduccionEditModal({
   orden,
   materiales,
@@ -86,14 +215,19 @@ export default function OrdenProduccionEditModal({
     modo_color: orden.modo_color || 'F/C',
     tipo_impresion: orden.tipo_impresion || '',
     cantidad_juegos_placas: getConfiguredPlateGames(orden),
+    tipo_servicio: orden.tipo_servicio || 'COMPLETO',
+    procesos_personalizados: getProcesosPersonalizadosFromOrden(orden),
+    ruta_acabados: getRutaAcabadosFromOrden(orden),
     observaciones: orden.observaciones || '',
     observacion_acabados: orden.observacion_acabados || '',
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [routeModalOpen, setRouteModalOpen] = useState(false);
   const usaJuegosPlacas = usesPlateGames(values.tipo_impresion);
   const juegosPlacasSummary = buildPlateGamesSummary(values.tipo_impresion, values.cantidad_juegos_placas);
+  const requiereRutaAcabados = serviceIncludesAcabados(values.tipo_servicio, values.procesos_personalizados);
 
   const setValue = (name, value) => {
     setValues((current) => ({ ...current, [name]: value }));
@@ -111,6 +245,57 @@ export default function OrdenProduccionEditModal({
     setErrors((current) => ({ ...current, tipo_impresion: '', cantidad_juegos_placas: '' }));
   };
 
+  const toggleProceso = (proceso) => {
+    setValues((current) => ({
+      ...current,
+      procesos_personalizados: current.procesos_personalizados.includes(proceso)
+        ? current.procesos_personalizados.filter((item) => item !== proceso)
+        : [...current.procesos_personalizados, proceso],
+    }));
+    setErrors((current) => ({ ...current, procesos_personalizados: '', ruta_acabados: '' }));
+  };
+
+  const toggleAcabado = (acabado) => {
+    setValues((current) => ({
+      ...current,
+      ruta_acabados: acabado === PLASTIFICADO_OPTION
+        ? (
+          current.ruta_acabados.some((item) => isPlastificadoProcess(item))
+            ? current.ruta_acabados.filter((item) => !isPlastificadoProcess(item))
+            : [...current.ruta_acabados, PLASTIFICADO_MODE_OPTIONS[0].value]
+        )
+        : (
+          current.ruta_acabados.includes(acabado)
+            ? current.ruta_acabados.filter((item) => item !== acabado)
+            : [...current.ruta_acabados, acabado]
+        ),
+    }));
+    setErrors((current) => ({ ...current, ruta_acabados: '' }));
+  };
+
+  const setPlastificadoMode = (value) => {
+    setValues((current) => {
+      const plastificadoIndex = current.ruta_acabados.findIndex((item) => isPlastificadoProcess(item));
+      if (plastificadoIndex === -1) {
+        return { ...current, ruta_acabados: [...current.ruta_acabados, value] };
+      }
+      const ruta = [...current.ruta_acabados];
+      ruta[plastificadoIndex] = value;
+      return { ...current, ruta_acabados: ruta };
+    });
+    setErrors((current) => ({ ...current, ruta_acabados: '' }));
+  };
+
+  const moveAcabado = (index, direction) => {
+    setValues((current) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= current.ruta_acabados.length) return current;
+      const ruta = [...current.ruta_acabados];
+      [ruta[index], ruta[nextIndex]] = [ruta[nextIndex], ruta[index]];
+      return { ...current, ruta_acabados: ruta };
+    });
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setSubmitError('');
@@ -125,6 +310,12 @@ export default function OrdenProduccionEditModal({
     if (!values.maquina_id) nextErrors.maquina_id = 'Selecciona una maquina sugerida.';
     if (!values.tipo_impresion) nextErrors.tipo_impresion = 'Selecciona el tipo de impresion.';
     validatePlateGames(nextErrors, values);
+    if (values.tipo_servicio === 'PERSONALIZADO' && values.procesos_personalizados.length === 0) {
+      nextErrors.procesos_personalizados = 'Selecciona al menos un proceso personalizado.';
+    }
+    if (requiereRutaAcabados && values.ruta_acabados.length === 0) {
+      nextErrors.ruta_acabados = 'Define al menos un acabado para la ruta de acabados.';
+    }
 
     if (hasErrors(nextErrors)) {
       setErrors(nextErrors);
@@ -142,9 +333,14 @@ export default function OrdenProduccionEditModal({
       modo_color: values.modo_color || null,
       tipo_impresion: values.tipo_impresion || null,
       cantidad_juegos_placas: usaJuegosPlacas ? Number(values.cantidad_juegos_placas) : null,
+      tipo_servicio: values.tipo_servicio,
       observaciones: values.observaciones.trim() || null,
       observacion_acabados: values.observacion_acabados.trim() || null,
     };
+    if (values.tipo_servicio === 'PERSONALIZADO') {
+      payload.procesos_personalizados = values.procesos_personalizados;
+    }
+    payload.ruta_acabados = requiereRutaAcabados ? values.ruta_acabados : [];
 
     setSaving(true);
     try {
@@ -262,6 +458,55 @@ export default function OrdenProduccionEditModal({
               </div>
             )}
 
+            <Select label="Tipo de servicio" name="tipo_servicio" value={values.tipo_servicio} onChange={(event) => setValue('tipo_servicio', event.target.value)}>
+              <option value="COMPLETO">COMPLETO</option>
+              <option value="SOLO_IMPRESION">SOLO IMPRESION</option>
+              <option value="PERSONALIZADO">PERSONALIZADO</option>
+            </Select>
+
+            {values.tipo_servicio === 'PERSONALIZADO' && (
+              <fieldset className="checkbox-panel">
+                <legend>Ruta de procesos</legend>
+                {errors.procesos_personalizados && <span className="field-error">{errors.procesos_personalizados}</span>}
+                {BASE_PROCESS_TYPES.map((proceso) => (
+                  <label key={proceso} className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={values.procesos_personalizados.includes(proceso)}
+                      onChange={() => toggleProceso(proceso)}
+                    />
+                    {proceso}
+                  </label>
+                ))}
+              </fieldset>
+            )}
+
+            {requiereRutaAcabados && (
+              <div className={`finish-route-summary ${values.ruta_acabados.length ? 'finish-route-summary-ready' : ''}`}>
+                <div>
+                  <span>Ruta de acabados</span>
+                  <strong>
+                    {values.ruta_acabados.length
+                      ? `${values.ruta_acabados.length} acabados configurados`
+                      : 'Sin ruta configurada'}
+                  </strong>
+                </div>
+                <p>
+                  {values.ruta_acabados.length
+                    ? values.ruta_acabados.join(' -> ')
+                    : 'Configura los acabados en el orden en que deben ejecutarse.'}
+                </p>
+                <Button
+                  type="button"
+                  variant={values.ruta_acabados.length ? 'outline' : 'primary'}
+                  onClick={() => setRouteModalOpen(true)}
+                >
+                  {values.ruta_acabados.length ? 'Editar ruta' : 'Configurar ruta'}
+                </Button>
+                {errors.ruta_acabados && <span className="field-error">{errors.ruta_acabados}</span>}
+              </div>
+            )}
+
             <label className="field">
               <span className="field-label">Observacion tecnica</span>
               <textarea
@@ -297,6 +542,17 @@ export default function OrdenProduccionEditModal({
           </Button>
         </div>
       </form>
+
+      {routeModalOpen && requiereRutaAcabados && (
+        <AcabadosRouteModal
+          rutaAcabados={values.ruta_acabados}
+          onToggle={toggleAcabado}
+          onMove={moveAcabado}
+          onClear={() => setValues((current) => ({ ...current, ruta_acabados: [] }))}
+          onPlastificadoModeChange={setPlastificadoMode}
+          onClose={() => setRouteModalOpen(false)}
+        />
+      )}
     </Modal>
   );
 }
