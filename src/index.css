@@ -2689,6 +2689,15 @@ textarea {
   padding: 1rem;
 }
 
+.operator-order-row:not(.operator-order-row-finish) {
+  align-items: center;
+  gap: 0.85rem;
+  grid-template-columns: minmax(150px, 0.55fr) minmax(360px, 1.35fr) minmax(150px, 0.42fr);
+  min-height: 88px;
+  overflow: hidden;
+  padding: 0.8rem 0.95rem;
+}
+
 .operator-order-row-finish {
   align-items: start;
   grid-template-columns: minmax(240px, 0.8fr) minmax(620px, 1.8fr) 190px;
@@ -2700,6 +2709,10 @@ textarea {
   display: grid;
   gap: 0.75rem;
   min-width: 0;
+}
+
+.operator-order-main-compact {
+  gap: 0.45rem;
 }
 
 .operator-order-title {
@@ -2820,6 +2833,16 @@ textarea {
   min-width: 0;
 }
 
+.operator-order-details-compact {
+  align-items: center;
+  gap: 0.85rem;
+  grid-template-columns: minmax(180px, 1.05fr) minmax(160px, 0.82fr) minmax(90px, 0.45fr);
+}
+
+.operator-order-details-compact div {
+  min-height: 46px;
+}
+
 .operator-order-details-finish {
   grid-template-columns: minmax(200px, 0.8fr) minmax(230px, 1fr) minmax(250px, 1.08fr);
 }
@@ -2876,6 +2899,10 @@ textarea {
   align-content: start;
   display: grid;
   gap: 0.55rem;
+}
+
+.operator-order-row:not(.operator-order-row-finish) .operator-order-actions {
+  align-content: center;
 }
 
 .operator-order-actions .btn {

@@ -559,7 +559,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
 
     return (
       <article className={`operator-order-row ${isAcabados ? 'operator-order-row-finish' : ''} ${row.isTrabajoActual ? 'operator-order-row-current' : ''} ${row.isLocked ? 'operator-order-row-locked' : ''}`}>
-        <div className="operator-order-main">
+        <div className={`operator-order-main ${!isAcabados ? 'operator-order-main-compact' : ''}`}>
           <div className="operator-order-title">
             <div>
               <span>Orden de produccion</span>
@@ -572,14 +572,16 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             )}
           </div>
 
-          <div className="operator-order-description">
-            <p>{produccion.descripcion || 'Sin descripcion'}</p>
-            <div className="operator-order-delivery">
-              <span>Entrega</span>
-              <strong>{entrega.date}</strong>
-              {entrega.time && <small>{entrega.time}</small>}
+          {isAcabados && (
+            <div className="operator-order-description">
+              <p>{produccion.descripcion || 'Sin descripcion'}</p>
+              <div className="operator-order-delivery">
+                <span>Entrega</span>
+                <strong>{entrega.date}</strong>
+                {entrega.time && <small>{entrega.time}</small>}
+              </div>
             </div>
-          </div>
+          )}
           {lockText && <small className="operator-lock-note">{lockText}</small>}
         </div>
 
@@ -645,37 +647,19 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             </div>
           </div>
         ) : (
-          <div className="operator-order-details">
-            <div>
-              <span>{row.isJuegosImpresion ? 'Control' : 'Proceso'}</span>
-              <strong>{row.isJuegosImpresion ? 'Juegos de placas' : proceso.tipo_proceso}</strong>
-              {row.isJuegosImpresion && <small>{juegosTerminados} de {juegos.length} terminados</small>}
-              {juegoActual && <small>{juegoActual.codigo_lado}</small>}
-            </div>
+          <div className="operator-order-details operator-order-details-compact">
             <div>
               <span>Cliente</span>
               <strong>{cliente}</strong>
             </div>
             <div>
-              <span>Cantidad</span>
+              <span>Cantidad / Material</span>
               <strong>{formatNumber(produccion.cantidad)}{produccion.demasia ? ` +${formatNumber(produccion.demasia)}` : ''}</strong>
+              <small>{material}</small>
             </div>
             <div>
               <span>Color</span>
               <strong>{produccion.modo_color || '-'}</strong>
-            </div>
-            <div>
-              <span>Formato</span>
-              <strong>{formato}</strong>
-              <small>{material}</small>
-            </div>
-            <div>
-              <span>Maquina</span>
-              <strong>{maquina}</strong>
-            </div>
-            <div>
-              <span>Impresion</span>
-              <strong>{produccion.tipo_impresion || '-'}</strong>
             </div>
           </div>
         )}
