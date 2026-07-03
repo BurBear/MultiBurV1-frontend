@@ -3,6 +3,7 @@ import { apiFetch } from './api';
 const endpoint = '/ordenes-trabajo/';
 
 export const listarOrdenesTrabajo = () => apiFetch(endpoint);
+export const listarOrdenesTrabajoResumen = () => apiFetch('/ordenes-trabajo/resumen');
 export const obtenerOrdenTrabajo = (id) => apiFetch(`/ordenes-trabajo/${id}`);
 export const crearOrdenTrabajo = (payload) => apiFetch(endpoint, { method: 'POST', body: payload });
 export const actualizarOrdenTrabajo = (id, payload) => apiFetch(`/ordenes-trabajo/${id}`, { method: 'PUT', body: payload });

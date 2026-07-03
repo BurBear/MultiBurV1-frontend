@@ -35,6 +35,9 @@ function hasStartedProcesses(produccion) {
 }
 
 function canChangeProduccion(produccion) {
+  if (typeof produccion.puede_modificar === 'boolean') {
+    return produccion.puede_modificar;
+  }
   return produccion.estado === 'PENDIENTE' && !hasStartedProcesses(produccion);
 }
 
@@ -44,7 +47,6 @@ export default function OrdenesProduccion() {
   const [materiales, setMateriales] = useState([]);
   const [formatos, setFormatos] = useState([]);
   const [maquinas, setMaquinas] = useState([]);
-  const [ordenesTrabajo, setOrdenesTrabajo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -63,20 +65,18 @@ export default function OrdenesProduccion() {
     setLoading(true);
     setError('');
     try {
-      const [ordenesData, clientesData, materialesData, formatosData, maquinasData, ordenesTrabajoData] = await Promise.all([
-        ordenesProduccionService.listarOrdenesProduccion(),
+      const [ordenesData, clientesData, materialesData, formatosData, maquinasData] = await Promise.all([
+        ordenesProduccionService.listarOrdenesProduccionResumen(),
         clientesService.listar(),
         materialesService.listar(),
         formatosService.listar(),
         maquinasService.listar(),
-        ordenesTrabajoService.listarOrdenesTrabajo(),
       ]);
       setOrdenes(asArray(ordenesData));
       setClientes(asArray(clientesData));
       setMateriales(asArray(materialesData));
       setFormatos(asArray(formatosData));
       setMaquinas(asArray(maquinasData));
-      setOrdenesTrabajo(asArray(ordenesTrabajoData));
     } catch (err) {
       setError(err.message || 'No se pudieron cargar las ordenes de produccion.');
     } finally {
@@ -153,7 +153,16 @@ export default function OrdenesProduccion() {
     setPrintLoadingId(orden.id);
     try {
       const detail = await ordenesProduccionService.obtenerOrdenProduccion(orden.id);
-      setPrintTarget(detail || orden);
+      const target = detail || orden;
+      let ordenTrabajo = target.orden_trabajo || null;
+      if (!ordenTrabajo && target.orden_trabajo_id) {
+        try {
+          ordenTrabajo = await ordenesTrabajoService.obtenerOrdenTrabajo(target.orden_trabajo_id);
+        } catch {
+          ordenTrabajo = null;
+        }
+      }
+      setPrintTarget(ordenTrabajo ? { ...target, orden_trabajo: ordenTrabajo } : target);
     } catch (err) {
       setError(err.message || 'No se pudo preparar la impresion de la orden de produccion.');
     } finally {
@@ -209,8 +218,7 @@ export default function OrdenesProduccion() {
 
   const getOrdenTrabajoCodigo = (produccion) => {
     if (!produccion.orden_trabajo_id) return '-';
-    const ordenTrabajo = ordenesTrabajo.find((orden) => String(orden.id) === String(produccion.orden_trabajo_id));
-    return ordenTrabajo?.codigo || produccion.orden_trabajo_codigo || `OT #${produccion.orden_trabajo_id}`;
+    return produccion.orden_trabajo_codigo || `OT #${produccion.orden_trabajo_id}`;
   };
 
   const columns = [
@@ -382,7 +390,6 @@ export default function OrdenesProduccion() {
           materiales={materiales}
           formatos={formatos}
           maquinas={maquinas}
-          ordenesTrabajo={ordenesTrabajo}
         />
       )}
     </div>

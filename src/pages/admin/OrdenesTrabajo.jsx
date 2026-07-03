@@ -78,11 +78,28 @@ function toDateInputValue(value) {
 }
 
 function produccionStarted(produccion) {
+  if (
+    typeof produccion.procesos_iniciados === 'boolean'
+    || typeof produccion.juegos_iniciados === 'boolean'
+  ) {
+    return Boolean(produccion.procesos_iniciados || produccion.juegos_iniciados)
+      || !['PENDIENTE', 'ANULADA'].includes(produccion.estado);
+  }
+
   const procesoIniciado = asArray(produccion.procesos).some((proceso) => proceso.estado !== 'PENDIENTE');
   return procesoIniciado || !['PENDIENTE', 'ANULADA'].includes(produccion.estado);
 }
 
 function canChangeProduccion(produccion) {
+  if (
+    typeof produccion?.procesos_iniciados === 'boolean'
+    || typeof produccion?.juegos_iniciados === 'boolean'
+  ) {
+    return produccion?.estado === 'PENDIENTE'
+      && !produccion.procesos_iniciados
+      && !produccion.juegos_iniciados;
+  }
+
   return produccion?.estado === 'PENDIENTE'
     && !asArray(produccion.procesos).some((proceso) => proceso.estado !== 'PENDIENTE')
     && !(
@@ -92,6 +109,11 @@ function canChangeProduccion(produccion) {
 }
 
 function canChangeOrdenTrabajo(orden) {
+  if (typeof orden.tiene_produccion_iniciada === 'boolean') {
+    return !['ANULADA', 'ENTREGADA'].includes(orden.estado)
+      && !orden.tiene_produccion_iniciada;
+  }
+
   return !['ANULADA', 'ENTREGADA'].includes(orden.estado)
     && !asArray(orden.ordenes_produccion).some(produccionStarted);
 }
@@ -483,7 +505,7 @@ export default function OrdenesTrabajo() {
     setError('');
     try {
       const [ordenesData, clientesData, materialesData, formatosData, maquinasData] = await Promise.all([
-        ordenesTrabajoService.listarOrdenesTrabajo(),
+        ordenesTrabajoService.listarOrdenesTrabajoResumen(),
         clientesService.listar(),
         materialesService.listar(),
         formatosService.listar(),
