@@ -354,8 +354,8 @@ export default function PizarraGlobal() {
         formatosData,
         maquinasData,
       ] = await Promise.all([
-        ordenesTrabajoService.listarOrdenesTrabajo(),
-        ordenesProduccionService.listarOrdenesProduccion(),
+        ordenesTrabajoService.listarOrdenesTrabajoResumen(),
+        ordenesProduccionService.listarOrdenesProduccionResumen(),
         incidenciasService.listarIncidencias(),
         clientesService.listar(),
         materialesService.listar(),
