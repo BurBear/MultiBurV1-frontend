@@ -288,6 +288,7 @@ function CierreIncidenciaModal({ onClose, onSubmit }) {
 export default function Pizarra({ ordenes = [], area, user, recargar, catalogs = {}, menuOpen = false, setMenuOpen }) {
   const [activeMenu, setActiveMenu] = React.useState('DISPONIBLES');
   const [actionLoading, setActionLoading] = React.useState('');
+  const [resumeSyncing, setResumeSyncing] = React.useState(false);
   const [incidenciaTarget, setIncidenciaTarget] = React.useState(null);
   const [selectedRow, setSelectedRow] = React.useState(null);
   const [incidenciasOrden, setIncidenciasOrden] = React.useState([]);
@@ -296,6 +297,12 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
   const [cierreCantidades, setCierreCantidades] = React.useState({ cantidad_buena: '', cantidad_mala: '' });
   const [cierreErrors, setCierreErrors] = React.useState(emptyCierreErrors);
   const [selectedPlatePair, setSelectedPlatePair] = React.useState(null);
+  const selectedRowRef = React.useRef(null);
+  const resumeSyncAtRef = React.useRef(0);
+
+  React.useEffect(() => {
+    selectedRowRef.current = selectedRow;
+  }, [selectedRow]);
 
   const catalogMaps = React.useMemo(() => ({
     clientes: indexById(catalogs.clientes),
@@ -367,10 +374,101 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     return 'neutral';
   };
 
+  function updateSelectedRowWithProduccion(current, produccionActualizada) {
+    if (!current || current.produccion.id !== produccionActualizada.id) return current;
+    const procesos = asArray(produccionActualizada.procesos);
+    const procesoActualizado = procesos.find((proceso) => proceso.id === current.proceso.id) || current.proceso;
+    const juegos = getJuegosImpresion(produccionActualizada);
+
+    return {
+      ...current,
+      produccion: produccionActualizada,
+      proceso: procesoActualizado,
+      procesos,
+      juegos,
+      juegoActual: getCurrentJuego(juegos, user?.id),
+      progress: getProgress(procesos),
+    };
+  }
+
+  const fetchProduccionDetalle = React.useCallback(async (ordenProduccionId) => {
+    try {
+      return await apiFetch(`/ordenes-produccion/${ordenProduccionId}`);
+    } catch (err) {
+      if (/Failed to fetch|NetworkError|Load failed/i.test(err.message || '')) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        return apiFetch(`/ordenes-produccion/${ordenProduccionId}`);
+      }
+      throw err;
+    }
+  }, []);
+
+  const refreshSelectedDetail = React.useCallback(async ({ showIndicator = false, throwOnError = false } = {}) => {
+    const current = selectedRowRef.current;
+    const ordenProduccionId = current?.produccion?.id;
+    if (!ordenProduccionId) return null;
+
+    if (showIndicator) setResumeSyncing(true);
+    try {
+      const produccionActualizada = await fetchProduccionDetalle(ordenProduccionId);
+      setSelectedRow((row) => updateSelectedRowWithProduccion(row, produccionActualizada));
+      return produccionActualizada;
+    } catch (err) {
+      if (throwOnError) throw err;
+      return null;
+    } finally {
+      if (showIndicator) setResumeSyncing(false);
+    }
+  }, [fetchProduccionDetalle, user?.id]);
+
+  React.useEffect(() => {
+    const syncAfterResume = () => {
+      if (document.visibilityState && document.visibilityState !== 'visible') return;
+
+      const now = Date.now();
+      if (now - resumeSyncAtRef.current < 1500) return;
+      resumeSyncAtRef.current = now;
+
+      const current = selectedRowRef.current;
+      setResumeSyncing(Boolean(current?.produccion?.id));
+
+      Promise.allSettled([
+        recargar?.({ silent: true }),
+        current?.produccion?.id ? refreshSelectedDetail() : Promise.resolve(null),
+      ]).finally(() => {
+        setResumeSyncing(false);
+      });
+    };
+
+    const handleVisibility = () => {
+      if (!document.hidden) syncAfterResume();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', syncAfterResume);
+    window.addEventListener('pageshow', syncAfterResume);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', syncAfterResume);
+      window.removeEventListener('pageshow', syncAfterResume);
+    };
+  }, [recargar, refreshSelectedDetail]);
+
+  const ensureFreshDetailBeforeMutation = async (ordenProduccionId) => {
+    const current = selectedRowRef.current;
+    if (!sameId(current?.produccion?.id, ordenProduccionId)) return;
+    await refreshSelectedDetail({ showIndicator: true, throwOnError: true });
+  };
+
   const handleAction = async (ordenProduccionId, tipoProceso, accion, payload = null) => {
     const loadingKey = `${ordenProduccionId}-${tipoProceso}-${accion}`;
     setActionLoading(loadingKey);
     try {
+      if (['pausar', 'reanudar', 'finalizar'].includes(accion)) {
+        await ensureFreshDetailBeforeMutation(ordenProduccionId);
+      }
+
       const tipoProcesoPath = encodeURIComponent(tipoProceso);
       const procesoActualizado = await apiFetch(`/ordenes-produccion/${ordenProduccionId}/procesos/${tipoProcesoPath}/${accion}`, {
         method: 'PUT',
@@ -431,27 +529,14 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     }
   };
 
-  const updateSelectedRowWithProduccion = (current, produccionActualizada) => {
-    if (!current || current.produccion.id !== produccionActualizada.id) return current;
-    const procesos = asArray(produccionActualizada.procesos);
-    const procesoActualizado = procesos.find((proceso) => proceso.id === current.proceso.id) || current.proceso;
-    const juegos = getJuegosImpresion(produccionActualizada);
-
-    return {
-      ...current,
-      produccion: produccionActualizada,
-      proceso: procesoActualizado,
-      procesos,
-      juegos,
-      juegoActual: getCurrentJuego(juegos, user?.id),
-      progress: getProgress(procesos),
-    };
-  };
-
   const handleJuegoAction = async (juegoId, accion, payload = null) => {
     const loadingKey = `juego-${juegoId}-${accion}`;
     setActionLoading(loadingKey);
     try {
+      if (['pausar', 'reanudar', 'finalizar'].includes(accion)) {
+        await ensureFreshDetailBeforeMutation(selectedRowRef.current?.produccion?.id);
+      }
+
       const produccionActualizada = await apiFetch(`/ordenes-produccion/juegos-impresion/${juegoId}/${accion}`, {
         method: 'PUT',
         ...(payload ? { body: payload } : {}),
@@ -693,7 +778,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const rowEstado = getRowEstado(row);
     const acabadosRuta = getProcesosByArea(procesos, 'ACABADOS');
     const impresionProceso = getImpresionProceso(procesos);
-    const isBusy = Boolean(actionLoading);
+    const isBusy = Boolean(actionLoading) || resumeSyncing;
     const previewOnly = Boolean(row.previewOnly);
     const incidenciasAbiertasProceso = incidenciasOrden.filter((incidencia) => (
       incidencia.proceso_id === proceso.id && incidencia.estado !== 'RESUELTA'
@@ -982,6 +1067,12 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             {closeDisabled && (
               <div className="alert alert-warning">
                 Para cerrar este detalle, pausa o finaliza el proceso.
+              </div>
+            )}
+
+            {resumeSyncing && (
+              <div className="alert alert-info">
+                Actualizando el detalle de la orden antes de continuar.
               </div>
             )}
 
