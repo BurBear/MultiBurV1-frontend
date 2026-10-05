@@ -116,10 +116,6 @@ export default function OrdenProduccionPrintDocument({
               <strong>{ordenTrabajoCodigo}</strong>
             </div>
           )}
-          <div>
-            <span>Servicio</span>
-            <strong>{formatStatus(produccion.tipo_servicio)}</strong>
-          </div>
           <div className="production-print-wide">
             <span>Trabajo</span>
             <strong>{produccion.descripcion || '-'}</strong>
