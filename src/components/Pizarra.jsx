@@ -945,37 +945,39 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
 
           <section className="operator-detail-section">
             <h3>{isAcabados ? 'Control de acabado' : previewOnly ? 'Proceso' : 'Acciones'}</h3>
-            <div className={`operator-process-summary ${isJuegosImpresion ? 'operator-process-summary-plates' : ''}`}>
-              <strong>{isJuegosImpresion ? 'Juegos de placas' : proceso.tipo_proceso}</strong>
-              {isJuegosImpresion && (
-                <select
-                  aria-label="Seleccionar par de placas"
-                  className="operator-plate-pair-select"
-                  value={selectedPairKey || ''}
-                  onChange={(event) => setSelectedPlatePair(event.target.value || null)}
-                  disabled={Boolean(currentPairKey) && !previewOnly}
-                >
-                  <option value="">Selecciona un par disponible</option>
-                  {selectablePairGroups.map((pair) => {
-                    const pairStatus = getPairStatus(pair.juegos, user?.id);
-                    const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
-                    const pairHasAvailable = pair.juegos.some((juego) => canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO');
-                    const displayStatus = pairHasCurrent
-                      ? 'TRABAJO ACTUAL'
-                      : pairHasAvailable
-                        ? 'DISPONIBLE'
-                        : pairStatus;
-                    const pairLabel = `${pair.grupo} ${produccion.tipo_impresion || 'T+R'}`;
+            {(isJuegosImpresion || proceso.tipo_proceso !== 'IMPRESION') && (
+              <div className={`operator-process-summary ${isJuegosImpresion ? 'operator-process-summary-plates' : ''}`}>
+                <strong>{isJuegosImpresion ? 'Juegos de placas' : proceso.tipo_proceso}</strong>
+                {isJuegosImpresion && (
+                  <select
+                    aria-label="Seleccionar par de placas"
+                    className="operator-plate-pair-select"
+                    value={selectedPairKey || ''}
+                    onChange={(event) => setSelectedPlatePair(event.target.value || null)}
+                    disabled={Boolean(currentPairKey) && !previewOnly}
+                  >
+                    <option value="">Selecciona un par disponible</option>
+                    {selectablePairGroups.map((pair) => {
+                      const pairStatus = getPairStatus(pair.juegos, user?.id);
+                      const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
+                      const pairHasAvailable = pair.juegos.some((juego) => canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO');
+                      const displayStatus = pairHasCurrent
+                        ? 'TRABAJO ACTUAL'
+                        : pairHasAvailable
+                          ? 'DISPONIBLE'
+                          : pairStatus;
+                      const pairLabel = `${pair.grupo} ${produccion.tipo_impresion || 'T+R'}`;
 
-                    return (
-                      <option key={pair.grupo} value={String(pair.grupo)}>
-                        {`${pairLabel} - ${displayStatus}`}
-                      </option>
-                    );
-                  })}
-                </select>
-              )}
-            </div>
+                      return (
+                        <option key={pair.grupo} value={String(pair.grupo)}>
+                          {`${pairLabel} - ${displayStatus}`}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+              </div>
+            )}
 
             {isJuegosImpresion ? (
               <div className="operator-plate-selected-area operator-plate-route-detail">
