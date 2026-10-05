@@ -1,7 +1,6 @@
 import { createPortal } from 'react-dom';
 import { formatLocalDateTime } from '../../utils/datetime';
 import { formatNumber, formatOrderCode, formatStatus } from '../../utils/formatters';
-import { getProcessArea } from '../../utils/procesos';
 import BrandLogo from '../brand/BrandLogo';
 
 function asArray(data) {
@@ -25,23 +24,6 @@ function getName(items, id, fallback = '-') {
 
 function getCliente(clientes, id) {
   return findById(clientes, id);
-}
-
-function getAcabados(produccion) {
-  return asArray(produccion.procesos)
-    .filter((proceso) => getProcessArea(proceso) === 'ACABADOS')
-    .map((proceso) => proceso.tipo_proceso);
-}
-
-function getProcesoActual(produccion) {
-  const procesos = asArray(produccion.procesos);
-  return (
-    procesos.find((proceso) => proceso.estado === 'EN_PROCESO')
-    || procesos.find((proceso) => proceso.estado === 'PAUSADO')
-    || procesos.find((proceso) => proceso.estado === 'PENDIENTE')
-    || procesos[procesos.length - 1]
-    || null
-  );
 }
 
 function getOrdenTrabajoVinculada(produccion, ordenesTrabajo, ordenTrabajoRelacionada) {
@@ -77,9 +59,9 @@ export default function OrdenProduccionPrintDocument({
   const cliente = getCliente(clientes, produccion.cliente_id);
   const ordenTrabajo = getOrdenTrabajoVinculada(produccion, ordenesTrabajo, ordenTrabajoRelacionada);
   const ordenTrabajoCodigo = getOrdenTrabajoCodigo(produccion, ordenTrabajo);
-  const procesoActual = getProcesoActual(produccion);
-  const acabados = getAcabados(produccion);
-  const juegosImpresion = usesPlateGames(produccion.tipo_impresion) ? asArray(produccion.juegos_impresion) : [];
+  const documentoFiscal = String(cliente?.documento || '').trim();
+  const usaJuegosPlacas = usesPlateGames(produccion.tipo_impresion);
+  const juegosImpresion = usaJuegosPlacas ? asArray(produccion.juegos_impresion) : [];
   const juegosImpresionTexto = juegosImpresion.length
     ? juegosImpresion.map((juego) => juego.codigo_lado).join(' | ')
     : '-';
@@ -116,24 +98,24 @@ export default function OrdenProduccionPrintDocument({
           </div>
           <div>
             <span>Tipo cliente</span>
-            <strong>{produccion.tipo_origen === 'SERVICIO' ? 'SERVICIO' : 'ORDEN DE TRABAJO'}</strong>
+            <strong>{cliente?.tipo_cliente || '-'}</strong>
           </div>
-          <div>
-            <span>Documento fiscal</span>
-            <strong>{cliente?.documento || '-'}</strong>
-          </div>
+          {documentoFiscal && (
+            <div>
+              <span>Documento fiscal</span>
+              <strong>{documentoFiscal}</strong>
+            </div>
+          )}
           <div>
             <span>Estado</span>
             <strong>{formatStatus(produccion.estado)}</strong>
           </div>
-          <div>
-            <span>Proceso actual</span>
-            <strong>{procesoActual?.tipo_proceso || '-'}</strong>
-          </div>
-          <div>
-            <span>Orden de trabajo</span>
-            <strong>{ordenTrabajoCodigo}</strong>
-          </div>
+          {produccion.orden_trabajo_id && (
+            <div>
+              <span>Orden de trabajo</span>
+              <strong>{ordenTrabajoCodigo}</strong>
+            </div>
+          )}
           <div>
             <span>Servicio</span>
             <strong>{formatStatus(produccion.tipo_servicio)}</strong>
@@ -153,10 +135,6 @@ export default function OrdenProduccionPrintDocument({
             <strong>{getName(maquinas, produccion.maquina_id, 'Sin maquina')}</strong>
           </div>
           <div>
-            <span>Formato</span>
-            <strong>{getName(formatos, produccion.formato_id)}</strong>
-          </div>
-          <div>
             <span>Material</span>
             <strong>{getName(materiales, produccion.material_id)}</strong>
           </div>
@@ -168,22 +146,22 @@ export default function OrdenProduccionPrintDocument({
             <span>Cantidad + demasia</span>
             <strong>{cantidadDemasia}</strong>
           </div>
-          <div>
-            <span>Juegos de placas</span>
-            <strong>{juegosImpresion.length || '-'}</strong>
-          </div>
-          <div>
-            <span>Codigo interno</span>
-            <strong>{formatOrderCode('OP', produccion.codigo, produccion.id)}</strong>
-          </div>
+          {usaJuegosPlacas && (
+            <div>
+              <span>Juegos de placas</span>
+              <strong>{juegosImpresion.length || '-'}</strong>
+            </div>
+          )}
           <div className="production-print-wide">
-            <span>Detalle de placas</span>
-            <strong>{juegosImpresionTexto}</strong>
+            <span>Formato</span>
+            <strong>{getName(formatos, produccion.formato_id)}</strong>
           </div>
-          <div className="production-print-wide">
-            <span>Procesos acabados</span>
-            <strong>{acabados.length ? acabados.join(' | ') : '-'}</strong>
-          </div>
+          {usaJuegosPlacas && (
+            <div className="production-print-wide">
+              <span>Detalle de placas</span>
+              <strong>{juegosImpresionTexto}</strong>
+            </div>
+          )}
           <div className="production-print-wide">
             <span>Ruta de procesos</span>
             <strong>{asArray(produccion.procesos).map((proceso) => proceso.tipo_proceso).join(' -> ') || '-'}</strong>
