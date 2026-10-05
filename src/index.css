@@ -3013,7 +3013,8 @@ textarea {
   grid-column: 1 / -1;
 }
 
-.operator-detail-list .operator-finish-notes dd {
+.operator-detail-list .operator-finish-notes dd,
+.operator-detail-list .operator-technical-notes dd {
   display: block;
   margin: 0.35rem 0 0;
   white-space: pre-wrap;

@@ -921,6 +921,10 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                   <div className="operator-detail-wide"><dt>Trabajo</dt><dd>{produccion.descripcion || '-'}</dd></div>
                   <div><dt>Entrega</dt><dd>{formatLocalDateTime(produccion.fecha_entrega_estimada)}</dd></div>
                   <div><dt>Color</dt><dd>{produccion.modo_color || '-'}</dd></div>
+                  <div className="operator-detail-wide operator-technical-notes">
+                    <dt>Observación técnica</dt>
+                    <dd>{produccion.observaciones?.trim() || 'Sin observaciones técnicas.'}</dd>
+                  </div>
                 </>
               )}
               {!isAcabados && proceso.cantidad_buena !== null && proceso.cantidad_buena !== undefined && (
