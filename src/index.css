@@ -2843,6 +2843,11 @@ textarea {
   min-height: 46px;
 }
 
+.operator-order-details .operator-order-print-type strong {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .operator-order-details-finish {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }

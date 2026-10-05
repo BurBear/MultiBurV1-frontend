@@ -721,9 +721,9 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
               <strong>{formatNumber(produccion.cantidad)}{produccion.demasia ? ` +${formatNumber(produccion.demasia)}` : ''}</strong>
               <small>{material}</small>
             </div>
-            <div>
-              <span>Color</span>
-              <strong>{produccion.modo_color || '-'}</strong>
+            <div className="operator-order-print-type">
+              <span>Color / Impresión</span>
+              <strong>{produccion.modo_color || '-'} - {produccion.tipo_impresion || '-'}</strong>
             </div>
           </div>
         )}
