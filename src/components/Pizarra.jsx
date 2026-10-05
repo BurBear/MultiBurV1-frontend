@@ -910,11 +910,11 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
               </div>
               {isAcabados && (
                 <>
-                  <div>
+                  <div className="operator-quantity-good">
                     <span>Buena registrada</span>
                     <strong>{formatRegisteredQuantity(impresionProceso?.cantidad_buena)}</strong>
                   </div>
-                  <div>
+                  <div className="operator-quantity-bad">
                     <span>Mala registrada</span>
                     <strong>{formatRegisteredQuantity(impresionProceso?.cantidad_mala)}</strong>
                   </div>
