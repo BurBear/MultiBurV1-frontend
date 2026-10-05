@@ -405,7 +405,13 @@ export default function OrdenProduccionEditModal({
               </Select>
               <Select label="Formato" name="formato_id" value={values.formato_id} onChange={(event) => setValue('formato_id', event.target.value)} error={errors.formato_id}>
                 <option value="">Sin formato</option>
-                {formatos.map((formato) => <option key={formato.id} value={formato.id}>{optionLabel(formato)}</option>)}
+                {formatos
+                  .filter((formato) => formato.estado === 'ACTIVO' || formato.id === Number(values.formato_id))
+                  .map((formato) => (
+                    <option key={formato.id} value={formato.id} disabled={formato.estado !== 'ACTIVO'}>
+                      {optionLabel(formato)}{formato.estado !== 'ACTIVO' ? ' (Inactivo)' : ''}
+                    </option>
+                  ))}
               </Select>
             </div>
 

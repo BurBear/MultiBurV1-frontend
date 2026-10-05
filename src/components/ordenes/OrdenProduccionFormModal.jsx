@@ -524,7 +524,9 @@ export default function OrdenProduccionFormModal({
               <Select label="Formato" name="formato_id" value={values.formato_id} onChange={(event) => setValue('formato_id', event.target.value)} error={errors.formato_id}>
                 <option value="">Selecciona formato</option>
                 <option value={FORMATO_PERSONALIZADO}>Personalizado</option>
-                {formatos.map((formato) => <option key={formato.id} value={formato.id}>{optionLabel(formato)}</option>)}
+                {formatos.filter((formato) => formato.estado === 'ACTIVO').map((formato) => (
+                  <option key={formato.id} value={formato.id}>{optionLabel(formato)}</option>
+                ))}
               </Select>
               <Select label="Maquina sugerida" name="maquina_id" value={values.maquina_id} onChange={(event) => setValue('maquina_id', event.target.value)} error={errors.maquina_id}>
                 <option value="">Sin maquina</option>
