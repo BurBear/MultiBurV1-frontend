@@ -131,16 +131,16 @@ export default function OrdenProduccionPrintDocument({
             <strong>{getName(maquinas, produccion.maquina_id, 'Sin maquina')}</strong>
           </div>
           <div>
-            <span>Material</span>
-            <strong>{getName(materiales, produccion.material_id)}</strong>
-          </div>
-          <div>
             <span>Impresion / Color</span>
             <strong>{produccion.tipo_impresion || '-'} / {produccion.modo_color || '-'}</strong>
           </div>
           <div>
             <span>Cantidad + demasia</span>
             <strong>{cantidadDemasia}</strong>
+          </div>
+          <div>
+            <span>Material</span>
+            <strong>{getName(materiales, produccion.material_id)}</strong>
           </div>
           {usaJuegosPlacas && (
             <div>
