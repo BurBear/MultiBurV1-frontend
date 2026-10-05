@@ -658,10 +658,16 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
           {isAcabados && (
             <div className="operator-order-description">
               <p>{produccion.descripcion || 'Sin descripcion'}</p>
-              <div className="operator-order-delivery">
-                <span>Entrega</span>
-                <strong>{entrega.date}</strong>
-                {entrega.time && <small>{entrega.time}</small>}
+              <div className="operator-order-delivery-client">
+                <div className="operator-order-delivery">
+                  <span>Entrega</span>
+                  <strong>{entrega.date}</strong>
+                  {entrega.time && <small>{entrega.time}</small>}
+                </div>
+                <div className="operator-order-client">
+                  <span>Cliente</span>
+                  <strong>{cliente}</strong>
+                </div>
               </div>
             </div>
           )}
@@ -691,11 +697,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             </div>
 
             <div className="operator-finish-metrics">
-              <div>
-                <span>Cliente</span>
-                <strong>{cliente}</strong>
-              </div>
-              <div>
+              <div className="operator-finish-requested">
                 <span>Solicitada</span>
                 <strong>{formatNumber(produccion.cantidad)}{produccion.demasia ? ` +${formatNumber(produccion.demasia)}` : ''}</strong>
               </div>

@@ -2749,6 +2749,7 @@ textarea {
 
 .operator-order-title span,
 .operator-order-details span,
+.operator-order-client span,
 .operator-order-delivery span {
   color: #bfdbfe;
   font-size: 0.72rem;
@@ -2777,12 +2778,23 @@ textarea {
   align-self: auto;
 }
 
-.operator-order-delivery {
+.operator-order-delivery-client {
   display: grid;
-  gap: 0.15rem;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.operator-order-delivery strong {
+.operator-order-delivery,
+.operator-order-client {
+  align-content: start;
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operator-order-delivery strong,
+.operator-order-client strong {
   color: var(--text-main);
   font-size: 0.95rem;
 }
@@ -2872,6 +2884,10 @@ textarea {
 
 .operator-finish-metrics {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operator-finish-requested {
+  grid-column: 1 / -1;
 }
 
 .operator-finish-route-preview {
