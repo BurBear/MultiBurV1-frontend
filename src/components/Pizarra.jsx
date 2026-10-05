@@ -888,7 +888,12 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
         title={isAcabados ? 'Detalle de acabado' : previewOnly ? 'Previsualizar orden' : 'Detalle de orden'}
         onClose={() => setSelectedRow(null)}
         panelClassName="modal-panel-wide operator-detail-modal"
-        headerMeta={<strong className="operator-detail-code">{codigo}</strong>}
+        headerMeta={
+          <>
+            <strong className="operator-detail-code">{codigo}</strong>
+            <Badge className="operator-detail-status" tone={getStatusTone(rowEstado)}>{formatStatus(rowEstado)}</Badge>
+          </>
+        }
         closeDisabled={closeDisabled}
       >
         <div className="operator-detail-grid">
@@ -942,7 +947,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             <h3>{isAcabados ? 'Control de acabado' : previewOnly ? 'Proceso' : 'Acciones'}</h3>
             <div className={`operator-process-summary ${isJuegosImpresion ? 'operator-process-summary-plates' : ''}`}>
               <strong>{isJuegosImpresion ? 'Juegos de placas' : proceso.tipo_proceso}</strong>
-              {isJuegosImpresion ? (
+              {isJuegosImpresion && (
                 <select
                   aria-label="Seleccionar par de placas"
                   className="operator-plate-pair-select"
@@ -969,8 +974,6 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                     );
                   })}
                 </select>
-              ) : (
-                <Badge tone={getStatusTone(rowEstado)}>{formatStatus(rowEstado)}</Badge>
               )}
             </div>
 

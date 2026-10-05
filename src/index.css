@@ -3377,7 +3377,7 @@ textarea {
   justify-content: flex-end;
 }
 
-.modal-header-meta span {
+.modal-header-meta span:not(.operator-detail-status) {
   background: rgba(15, 23, 42, 0.5);
   border: 1px solid var(--border);
   border-radius: 6px;
