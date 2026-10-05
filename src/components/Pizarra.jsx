@@ -923,15 +923,26 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             </div>
 
             <dl className="operator-detail-list">
-              <div><dt>Material</dt><dd>{material}</dd></div>
-              <div><dt>Impresion</dt><dd>{produccion.tipo_impresion || '-'}</dd></div>
-              <div><dt>Formato</dt><dd>{formato}</dd></div>
-              <div><dt>Cliente</dt><dd>{cliente}</dd></div>
-              <div className="operator-detail-wide"><dt>Trabajo</dt><dd>{produccion.descripcion || '-'}</dd></div>
-              <div><dt>Entrega</dt><dd>{formatLocalDateTime(produccion.fecha_entrega_estimada)}</dd></div>
-              <div><dt>Color</dt><dd>{produccion.modo_color || '-'}</dd></div>
-              {isAcabados && (
-                <div><dt>Acabado actual</dt><dd>{proceso.tipo_proceso}</dd></div>
+              {isAcabados ? (
+                <>
+                  <div className="operator-detail-wide"><dt>Trabajo</dt><dd>{produccion.descripcion || '-'}</dd></div>
+                  <div><dt>Cliente</dt><dd>{cliente}</dd></div>
+                  <div><dt>Fecha de entrega</dt><dd>{formatLocalDateTime(produccion.fecha_entrega_estimada)}</dd></div>
+                  <div className="operator-detail-wide operator-finish-notes">
+                    <dt>Observación de acabados</dt>
+                    <dd>{produccion.observacion_acabados?.trim() || 'Sin observaciones de acabados.'}</dd>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div><dt>Material</dt><dd>{material}</dd></div>
+                  <div><dt>Impresion</dt><dd>{produccion.tipo_impresion || '-'}</dd></div>
+                  <div><dt>Formato</dt><dd>{formato}</dd></div>
+                  <div><dt>Cliente</dt><dd>{cliente}</dd></div>
+                  <div className="operator-detail-wide"><dt>Trabajo</dt><dd>{produccion.descripcion || '-'}</dd></div>
+                  <div><dt>Entrega</dt><dd>{formatLocalDateTime(produccion.fecha_entrega_estimada)}</dd></div>
+                  <div><dt>Color</dt><dd>{produccion.modo_color || '-'}</dd></div>
+                </>
               )}
               {!isAcabados && proceso.cantidad_buena !== null && proceso.cantidad_buena !== undefined && (
                 <div><dt>Buena</dt><dd>{formatNumber(proceso.cantidad_buena)}</dd></div>

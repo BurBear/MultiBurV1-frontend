@@ -3010,6 +3010,12 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.operator-detail-list .operator-finish-notes dd {
+  display: block;
+  margin: 0.35rem 0 0;
+  white-space: pre-wrap;
+}
+
 .operator-detail-list dt {
   color: #bfdbfe;
   display: inline;
