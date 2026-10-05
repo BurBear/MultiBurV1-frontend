@@ -2988,6 +2988,10 @@ textarea {
   min-width: 0;
 }
 
+.operator-detail-wide {
+  grid-column: 1 / -1;
+}
+
 .operator-detail-list dt {
   color: #bfdbfe;
   display: inline;
