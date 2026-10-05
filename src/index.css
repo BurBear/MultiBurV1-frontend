@@ -2700,7 +2700,7 @@ textarea {
 
 .operator-order-row-finish {
   align-items: start;
-  grid-template-columns: minmax(240px, 0.8fr) minmax(620px, 1.8fr) 190px;
+  grid-template-columns: minmax(240px, 1fr) minmax(440px, 1.4fr) 190px;
   min-height: auto;
 }
 
@@ -2844,7 +2844,7 @@ textarea {
 }
 
 .operator-order-details-finish {
-  grid-template-columns: minmax(200px, 0.8fr) minmax(230px, 1fr) minmax(250px, 1.08fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .operator-order-details div {
@@ -2854,8 +2854,7 @@ textarea {
 }
 
 .operator-finish-current,
-.operator-finish-metrics,
-.operator-finish-specs {
+.operator-finish-metrics {
   align-content: start;
   background: rgba(15, 23, 42, 0.44);
   border: 1px solid rgba(148, 163, 184, 0.18);
@@ -2866,8 +2865,7 @@ textarea {
   padding: 0.75rem;
 }
 
-.operator-finish-metrics,
-.operator-finish-specs {
+.operator-finish-metrics {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 

@@ -624,8 +624,6 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const { produccion, proceso, procesos } = row;
     const cliente = catalogMaps.clientes[produccion.cliente_id]?.nombre || `Cliente #${produccion.cliente_id}`;
     const material = catalogMaps.materiales[produccion.material_id]?.nombre || '-';
-    const formato = catalogMaps.formatos[produccion.formato_id]?.nombre || '-';
-    const maquina = catalogMaps.maquinas[produccion.maquina_id]?.nombre || 'Sin maquina';
     const codigo = formatOrderCode('OP', produccion.codigo, produccion.id);
     const entrega = formatLocalDateTimeParts(produccion.fecha_entrega_estimada);
     const isAcabados = getProcessArea(proceso) === 'ACABADOS';
@@ -711,25 +709,6 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
               </div>
             </div>
 
-            <div className="operator-finish-specs">
-              <div>
-                <span>Formato</span>
-                <strong>{formato}</strong>
-                <small>{material}</small>
-              </div>
-              <div>
-                <span>Color</span>
-                <strong>{produccion.modo_color || '-'}</strong>
-              </div>
-              <div>
-                <span>Impresion</span>
-                <strong>{produccion.tipo_impresion || '-'}</strong>
-              </div>
-              <div>
-                <span>Maquina</span>
-                <strong>{maquina}</strong>
-              </div>
-            </div>
           </div>
         ) : (
           <div className="operator-order-details operator-order-details-compact">
