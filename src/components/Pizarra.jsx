@@ -926,8 +926,8 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
               {isAcabados ? (
                 <>
                   <div className="operator-detail-wide"><dt>Trabajo</dt><dd>{produccion.descripcion || '-'}</dd></div>
-                  <div><dt>Cliente</dt><dd>{cliente}</dd></div>
-                  <div><dt>Fecha de entrega</dt><dd>{formatLocalDateTime(produccion.fecha_entrega_estimada)}</dd></div>
+                  <div className="operator-detail-wide"><dt>Cliente</dt><dd>{cliente}</dd></div>
+                  <div className="operator-detail-wide"><dt>Fecha de entrega</dt><dd>{formatLocalDateTime(produccion.fecha_entrega_estimada)}</dd></div>
                   <div className="operator-detail-wide operator-finish-notes">
                     <dt>Observación de acabados</dt>
                     <dd>{produccion.observacion_acabados?.trim() || 'Sin observaciones de acabados.'}</dd>
