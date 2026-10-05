@@ -19,6 +19,12 @@ import {
   serviceIncludesAcabados,
 } from '../../utils/procesos';
 import { predecirOrdenProduccion } from '../../services/prediccionService';
+import { obtenerOCrearPersonalizado } from '../../services/formatosService';
+import {
+  FORMATO_PERSONALIZADO,
+  buscarFormatoPorMedidas,
+  validarFormatoPersonalizado,
+} from '../../utils/formatos';
 
 function optionLabel(item) {
   return item.nombre || item.codigo || `ID ${item.id}`;
@@ -58,7 +64,7 @@ function buildPredictionProcesses(values) {
   return Array.from(new Set(base.filter(Boolean)));
 }
 
-function buildPredictionPayload(values) {
+function buildPredictionPayload(values, formatos) {
   const payload = {
     tipo_servicio: values.tipo_servicio,
     cantidad: Number(values.cantidad),
@@ -67,7 +73,12 @@ function buildPredictionPayload(values) {
   };
 
   if (values.material_id) payload.material_id = Number(values.material_id);
-  if (values.formato_id) payload.formato_id = Number(values.formato_id);
+  if (values.formato_id === FORMATO_PERSONALIZADO) {
+    const formato = buscarFormatoPorMedidas(formatos, values.alto, values.ancho);
+    if (formato) payload.formato_id = formato.id;
+  } else if (values.formato_id) {
+    payload.formato_id = Number(values.formato_id);
+  }
   if (values.maquina_id) payload.maquina_id = Number(values.maquina_id);
   return payload;
 }
@@ -214,11 +225,13 @@ export default function OrdenProduccionFormModal({
     demasia: '',
     material_id: '',
     formato_id: '',
+    alto: '',
+    ancho: '',
     maquina_id: '',
     modo_color: 'F/C',
     tipo_impresion: '',
     cantidad_juegos_placas: '',
-    tipo_servicio: 'COMPLETO',
+    tipo_servicio: (defaults.tipo_origen || 'SERVICIO') === 'SERVICIO' ? 'SOLO_IMPRESION' : 'COMPLETO',
     procesos_personalizados: [],
     ruta_acabados: [],
     estado: 'PENDIENTE',
@@ -318,6 +331,7 @@ export default function OrdenProduccionFormModal({
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (saving) return;
     setError('');
     setErrors({});
 
@@ -329,6 +343,7 @@ export default function OrdenProduccionFormModal({
     if (isBlank(values.fecha_entrega_estimada)) nextErrors.fecha_entrega_estimada = 'Ingresa fecha y hora de entrega.';
     if (!values.material_id) nextErrors.material_id = 'Selecciona un material.';
     if (!values.formato_id) nextErrors.formato_id = 'Selecciona un formato.';
+    validarFormatoPersonalizado(nextErrors, values);
     if (!values.maquina_id) nextErrors.maquina_id = 'Selecciona una maquina sugerida.';
     if (!values.tipo_impresion) nextErrors.tipo_impresion = 'Selecciona el tipo de impresion.';
     validatePlateGames(nextErrors, values);
@@ -358,7 +373,9 @@ export default function OrdenProduccionFormModal({
 
     if (values.demasia !== '') payload.demasia = Number(values.demasia);
     if (values.material_id) payload.material_id = Number(values.material_id);
-    if (values.formato_id) payload.formato_id = Number(values.formato_id);
+    if (values.formato_id && values.formato_id !== FORMATO_PERSONALIZADO) {
+      payload.formato_id = Number(values.formato_id);
+    }
     if (values.maquina_id) payload.maquina_id = Number(values.maquina_id);
     if (usaJuegosPlacas) payload.cantidad_juegos_placas = Number(values.cantidad_juegos_placas);
     if (values.observaciones.trim()) payload.observaciones = values.observaciones.trim();
@@ -374,6 +391,10 @@ export default function OrdenProduccionFormModal({
 
     setSaving(true);
     try {
+      if (values.formato_id === FORMATO_PERSONALIZADO) {
+        const formato = await obtenerOCrearPersonalizado(values.alto, values.ancho);
+        payload.formato_id = formato.id;
+      }
       await onSubmit(payload);
     } catch (err) {
       setError(err.message || 'No se pudo crear la orden de produccion.');
@@ -386,6 +407,7 @@ export default function OrdenProduccionFormModal({
     setPrediction(null);
 
     const nextErrors = {};
+    validarFormatoPersonalizado(nextErrors, values);
     validatePositiveNumber(nextErrors, values, 'cantidad', 'La cantidad debe ser mayor que cero.');
     validateNonNegativeNumber(nextErrors, values, 'demasia', 'La demasia no puede ser negativa.');
     if (values.tipo_servicio === 'PERSONALIZADO' && values.procesos_personalizados.length === 0) {
@@ -403,7 +425,7 @@ export default function OrdenProduccionFormModal({
 
     setPredictionLoading(true);
     try {
-      const result = await predecirOrdenProduccion(buildPredictionPayload(values));
+      const result = await predecirOrdenProduccion(buildPredictionPayload(values, formatos));
       setPrediction(result);
     } catch (err) {
       setPredictionError(err.message || 'No se pudo calcular la prediccion.');
@@ -466,15 +488,6 @@ export default function OrdenProduccionFormModal({
               required
             />
             <Input
-              label="Fecha y hora de entrega"
-              name="fecha_entrega_estimada"
-              type="datetime-local"
-              value={values.fecha_entrega_estimada}
-              onChange={(event) => setValue('fecha_entrega_estimada', event.target.value)}
-              error={errors.fecha_entrega_estimada}
-              required
-            />
-            <Input
               label="Demasia"
               name="demasia"
               type="number"
@@ -483,6 +496,15 @@ export default function OrdenProduccionFormModal({
               onChange={(event) => setValue('demasia', event.target.value)}
               placeholder="Ej: 30"
               error={errors.demasia}
+            />
+            <Input
+              label="Fecha y hora de entrega"
+              name="fecha_entrega_estimada"
+              type="datetime-local"
+              value={values.fecha_entrega_estimada}
+              onChange={(event) => setValue('fecha_entrega_estimada', event.target.value)}
+              error={errors.fecha_entrega_estimada}
+              required
             />
           </section>
 
@@ -501,6 +523,7 @@ export default function OrdenProduccionFormModal({
             <div className="technical-select-grid">
               <Select label="Formato" name="formato_id" value={values.formato_id} onChange={(event) => setValue('formato_id', event.target.value)} error={errors.formato_id}>
                 <option value="">Selecciona formato</option>
+                <option value={FORMATO_PERSONALIZADO}>Personalizado</option>
                 {formatos.map((formato) => <option key={formato.id} value={formato.id}>{optionLabel(formato)}</option>)}
               </Select>
               <Select label="Maquina sugerida" name="maquina_id" value={values.maquina_id} onChange={(event) => setValue('maquina_id', event.target.value)} error={errors.maquina_id}>
@@ -508,6 +531,33 @@ export default function OrdenProduccionFormModal({
                 {maquinas.map((maquina) => <option key={maquina.id} value={maquina.id}>{optionLabel(maquina)}</option>)}
               </Select>
             </div>
+
+            {values.formato_id === FORMATO_PERSONALIZADO && (
+              <div className="technical-select-grid">
+                <Input
+                  label="Alto (cm)"
+                  name="alto"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={values.alto}
+                  onChange={(event) => setValue('alto', event.target.value)}
+                  error={errors.alto}
+                  required
+                />
+                <Input
+                  label="Ancho (cm)"
+                  name="ancho"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={values.ancho}
+                  onChange={(event) => setValue('ancho', event.target.value)}
+                  error={errors.ancho}
+                  required
+                />
+              </div>
+            )}
 
             <div className="technical-select-grid">
               <Select label="Modo de color" name="modo_color" value={values.modo_color} onChange={(event) => setValue('modo_color', event.target.value)}>
