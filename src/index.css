@@ -2924,6 +2924,13 @@ textarea {
   max-width: 1120px;
 }
 
+.operator-detail-code {
+  color: var(--text-main);
+  font-size: 1.4rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .operator-detail-grid {
   align-items: start;
   display: grid;

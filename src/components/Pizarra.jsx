@@ -888,7 +888,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
         title={isAcabados ? 'Detalle de acabado' : previewOnly ? 'Previsualizar orden' : 'Detalle de orden'}
         onClose={() => setSelectedRow(null)}
         panelClassName="modal-panel-wide operator-detail-modal"
-        headerMeta={<Badge tone={getStatusTone(rowEstado)}>{formatStatus(rowEstado)}</Badge>}
+        headerMeta={<strong className="operator-detail-code">{codigo}</strong>}
         closeDisabled={closeDisabled}
       >
         <div className="operator-detail-grid">
@@ -918,17 +918,17 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
             </div>
 
             <dl className="operator-detail-list">
-              <div><dt>Orden</dt><dd>{codigo}</dd></div>
-              <div><dt>{isAcabados ? 'Acabado actual' : 'Proceso'}</dt><dd>{proceso.tipo_proceso}</dd></div>
-              <div><dt>Estado</dt><dd>{formatStatus(proceso.estado)}</dd></div>
+              <div><dt>Material</dt><dd>{material}</dd></div>
+              <div><dt>Impresion</dt><dd>{produccion.tipo_impresion || '-'}</dd></div>
+              <div><dt>Formato</dt><dd>{formato}</dd></div>
               <div><dt>Cliente</dt><dd>{cliente}</dd></div>
               <div><dt>Trabajo</dt><dd>{produccion.descripcion || '-'}</dd></div>
               <div><dt>Entrega</dt><dd>{formatLocalDateTime(produccion.fecha_entrega_estimada)}</dd></div>
-              <div><dt>Formato</dt><dd>{formato}</dd></div>
-              <div><dt>Material</dt><dd>{material}</dd></div>
               <div><dt>Maquina sugerida</dt><dd>{maquina}</dd></div>
-              <div><dt>Impresion</dt><dd>{produccion.tipo_impresion || '-'}</dd></div>
               <div><dt>Color</dt><dd>{produccion.modo_color || '-'}</dd></div>
+              {isAcabados && (
+                <div><dt>Acabado actual</dt><dd>{proceso.tipo_proceso}</dd></div>
+              )}
               {!isAcabados && proceso.cantidad_buena !== null && proceso.cantidad_buena !== undefined && (
                 <div><dt>Buena</dt><dd>{formatNumber(proceso.cantidad_buena)}</dd></div>
               )}
