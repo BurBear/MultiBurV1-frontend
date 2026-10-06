@@ -22,6 +22,19 @@ function getName(items, id, fallback = '-') {
   return item?.nombre || item?.codigo || fallback;
 }
 
+function getFormatoLabel(formatos, id) {
+  const formato = findById(formatos, id);
+  const alto = Number(formato?.alto);
+  const ancho = Number(formato?.ancho);
+  if (/^personalizado\b/i.test(String(formato?.nombre || '').trim())
+    && Number.isFinite(alto) && alto > 0
+    && Number.isFinite(ancho) && ancho > 0) {
+    const unidad = String(formato.unidad_medida || 'CM').trim().toLowerCase();
+    return `${alto} × ${ancho} ${unidad}`;
+  }
+  return getName(formatos, id);
+}
+
 function getCliente(clientes, id) {
   return findById(clientes, id);
 }
@@ -150,7 +163,7 @@ export default function OrdenProduccionPrintDocument({
           )}
           <div className="production-print-wide">
             <span>Formato</span>
-            <strong>{getName(formatos, produccion.formato_id)}</strong>
+            <strong>{getFormatoLabel(formatos, produccion.formato_id)}</strong>
           </div>
           {usaJuegosPlacas && (
             <div className="production-print-wide">
