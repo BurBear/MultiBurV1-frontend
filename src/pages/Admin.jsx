@@ -139,7 +139,7 @@ const menuGroups = [
 ];
 
 export default function Admin({ menuOpen, setMenuOpen, onSectionChange }) {
-  const [activeSection, setActiveSection] = useState('DASHBOARD');
+  const [activeSection, setActiveSection] = useState('PIZARRA_GLOBAL');
   const [openGroups, setOpenGroups] = useState({
     GENERAL: true,
     CATALOGOS: true,
@@ -148,7 +148,7 @@ export default function Admin({ menuOpen, setMenuOpen, onSectionChange }) {
   });
 
   const ActiveComponent = useMemo(
-    () => sections.find((section) => section.id === activeSection)?.Component || Dashboard,
+    () => sections.find((section) => section.id === activeSection)?.Component || PizarraGlobal,
     [activeSection],
   );
   const sectionsById = useMemo(() => {
@@ -160,7 +160,7 @@ export default function Admin({ menuOpen, setMenuOpen, onSectionChange }) {
 
   useEffect(() => {
     const section = sections.find((item) => item.id === activeSection);
-    onSectionChange?.(section?.label || 'Dashboard');
+    onSectionChange?.(section?.label || 'Pizarra Global');
   }, [activeSection, onSectionChange]);
 
   const toggleGroup = (groupId) => {

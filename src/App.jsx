@@ -10,7 +10,7 @@ function App() {
   const { user, loading, logout } = useContext(AuthContext);
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [operatorMenuOpen, setOperatorMenuOpen] = useState(false);
-  const [adminSectionTitle, setAdminSectionTitle] = useState('Dashboard');
+  const [adminSectionTitle, setAdminSectionTitle] = useState('Pizarra Global');
 
   if (loading) {
     return (
