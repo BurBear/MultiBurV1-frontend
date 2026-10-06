@@ -302,7 +302,7 @@ export default function OrdenesProduccion() {
         ) : error ? (
           <div className="alert alert-danger">{error}</div>
         ) : (
-          <CrudTable columns={columns} rows={ordenes} />
+          <CrudTable columns={columns} rows={ordenes} initialStatusFilter="PENDIENTE" />
         )}
       </section>
 

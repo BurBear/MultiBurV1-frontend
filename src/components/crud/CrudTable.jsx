@@ -13,11 +13,11 @@ function renderValue(value) {
   return String(value);
 }
 
-export default function CrudTable({ columns, rows, onEdit, onDeactivate, onView }) {
+export default function CrudTable({ columns, rows, onEdit, onDeactivate, onView, initialStatusFilter = 'TODOS' }) {
   const [limit, setLimit] = useState(10);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('TODOS');
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
   const hasStatusColumn = columns.some((column) => column.key === 'estado');
   const hasActions = Boolean(onView || onEdit || onDeactivate);
 
@@ -46,8 +46,9 @@ export default function CrudTable({ columns, rows, onEdit, onDeactivate, onView 
   }, [filteredRows, limit, safePage]);
 
   const statusOptions = useMemo(() => {
-    return [...new Set(rows.map((row) => row.estado).filter(Boolean))];
-  }, [rows]);
+    const initialOptions = initialStatusFilter === 'TODOS' ? [] : [initialStatusFilter];
+    return [...new Set([...initialOptions, ...rows.map((row) => row.estado).filter(Boolean)])];
+  }, [rows, initialStatusFilter]);
 
   const handleLimitChange = (event) => {
     setLimit(event.target.value === 'TODOS' ? 'TODOS' : Number(event.target.value));
