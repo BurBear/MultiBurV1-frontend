@@ -48,6 +48,7 @@ function getProgress(producciones) {
 }
 
 function getProductionStatusFromProcesses(procesos, fallback = 'PENDIENTE') {
+  if (fallback === 'ANULADA') return 'ANULADA';
   const estados = asArray(procesos).map((proceso) => proceso.estado);
   if (estados.length === 0) return fallback;
   if (estados.every((estado) => estado === 'TERMINADO')) return 'TERMINADO';
@@ -73,6 +74,7 @@ function getCurrentProcess(procesos) {
 }
 
 function matchesStatusFilter(status, filter) {
+  if (status === 'ANULADA') return false;
   if (filter === 'TODOS') return true;
   if (filter === 'ACTIVOS') return !['TERMINADO', 'ENTREGADA', 'ANULADA', 'INACTIVO'].includes(status);
   if (filter === 'TERMINADOS') return ['TERMINADO', 'ENTREGADA'].includes(status);
@@ -415,10 +417,12 @@ export default function PizarraGlobal() {
 
     const query = normalize(search);
     const workRows = ordenesTrabajo.map((orden) => {
-      const producciones = (productionsByWork[String(orden.id)] || asArray(orden.ordenes_produccion)).map((produccion) => ({
-        ...produccion,
-        incidencias_abiertas: incidenciasByProduction[String(produccion.id)] || [],
-      }));
+      const producciones = (productionsByWork[String(orden.id)] || asArray(orden.ordenes_produccion))
+        .filter((produccion) => produccion.estado !== 'ANULADA')
+        .map((produccion) => ({
+          ...produccion,
+          incidencias_abiertas: incidenciasByProduction[String(produccion.id)] || [],
+        }));
       const cliente = catalogs.clientes[orden.cliente_id];
       return {
         ...orden,
