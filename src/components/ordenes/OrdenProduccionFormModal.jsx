@@ -112,8 +112,8 @@ function validatePlateGames(nextErrors, values) {
     nextErrors.cantidad_juegos_placas = 'Ingresa una cantidad valida de juegos de placas.';
     return;
   }
-  if (value > 20) {
-    nextErrors.cantidad_juegos_placas = 'El maximo permitido es 20.';
+  if (value > 40) {
+    nextErrors.cantidad_juegos_placas = 'El maximo permitido es 40.';
   }
 }
 
@@ -583,7 +583,7 @@ export default function OrdenProduccionFormModal({
                   name="cantidad_juegos_placas"
                   type="number"
                   min="1"
-                  max="20"
+                  max="40"
                   step="1"
                   value={values.cantidad_juegos_placas}
                   onChange={(event) => setValue('cantidad_juegos_placas', event.target.value)}
