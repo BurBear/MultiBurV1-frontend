@@ -75,8 +75,10 @@ export default function OrdenProduccionPrintDocument({
   const documentoFiscal = String(cliente?.documento || '').trim();
   const usaJuegosPlacas = usesPlateGames(produccion.tipo_impresion);
   const juegosImpresion = usaJuegosPlacas ? asArray(produccion.juegos_impresion) : [];
+  const tiras = juegosImpresion.filter((juego) => juego.lado === 'TIRA').length;
+  const retiras = juegosImpresion.filter((juego) => juego.lado === 'RETIRA').length;
   const juegosImpresionTexto = juegosImpresion.length
-    ? juegosImpresion.map((juego) => juego.codigo_lado).join(' | ')
+    ? `${tiras} ${tiras === 1 ? 'tira' : 'tiras'} + ${retiras} ${retiras === 1 ? 'retira' : 'retiras'}`
     : '-';
   const cantidadDemasia = produccion.demasia
     ? `${formatNumber(produccion.cantidad)} + ${formatNumber(produccion.demasia)}`
