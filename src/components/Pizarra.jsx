@@ -12,6 +12,7 @@ import { formatDateTime, formatLocalDateTime, formatLocalDateTimeParts } from '.
 import { formatNumber, formatOrderCode, formatStatus, getStatusTone } from '../utils/formatters';
 import { formatIncidenciaValue } from '../utils/incidencias';
 import { getProcessArea } from '../utils/procesos';
+import { getRowEstado, getRowsForMenu } from '../utils/pizarraOperador';
 
 const menuItems = [
   { id: 'DISPONIBLES', label: 'Disponibles', description: 'Pendientes, en proceso y pausadas' },
@@ -110,14 +111,6 @@ function getPairStatus(pairJuegos, userId) {
   return juegos[0]?.estado || 'PENDIENTE';
 }
 
-function getRowEstado(row) {
-  if (!row?.isJuegosImpresion) return row?.proceso?.estado;
-  const juegos = asArray(row.juegos);
-  if (juegos.length > 0 && juegos.every((juego) => juego.estado === 'TERMINADO')) return 'TERMINADO';
-  if (row.juegoActual) return row.juegoActual.estado;
-  return row.proceso?.estado || 'PENDIENTE';
-}
-
 function getProcesosByArea(procesos, area) {
   return asArray(procesos).filter((proceso) => getProcessArea(proceso) === area);
 }
@@ -192,23 +185,6 @@ function getImpresionProceso(procesos) {
 
 function formatRegisteredQuantity(value) {
   return value === null || value === undefined ? '-' : formatNumber(value);
-}
-
-function getRowsForMenu(rows, menuId) {
-  if (menuId === 'DISPONIBLES') {
-    return rows.filter((row) => (
-      row.isTrabajoActual
-      || (
-        row.isJuegosImpresion
-          ? row.puedeIniciar && getRowEstado(row) !== 'TERMINADO' && !row.isLocked
-          : row.proceso.estado === 'PENDIENTE' && row.puedeIniciar && !row.isLocked
-      )
-    ));
-  }
-  if (menuId === 'BLOQUEADAS') {
-    return rows.filter((row) => row.isLocked || (getRowEstado(row) === 'PENDIENTE' && !row.puedeIniciar));
-  }
-  return rows.filter((row) => getRowEstado(row) === menuId);
 }
 
 function RefreshIcon() {
@@ -360,12 +336,12 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
 
   const counts = React.useMemo(() => {
     return menuItems.reduce((acc, item) => {
-      acc[item.id] = getRowsForMenu(operatorRows, item.id).length;
+      acc[item.id] = getRowsForMenu(operatorRows, item.id, user?.id).length;
       return acc;
     }, {});
-  }, [operatorRows]);
+  }, [operatorRows, user?.id]);
 
-  const visibleRows = getRowsForMenu(operatorRows, activeMenu);
+  const visibleRows = getRowsForMenu(operatorRows, activeMenu, user?.id);
   const activeMenuItem = menuItems.find((item) => item.id === activeMenu);
   const getMenuTone = (itemId) => {
     if (itemId === 'TERMINADO') return 'success';
