@@ -46,10 +46,6 @@ function isActiveProcess(proceso) {
   return ['EN_PROCESO', 'PAUSADO'].includes(proceso?.estado);
 }
 
-function isActiveJuego(juego) {
-  return ['EN_PROCESO', 'PAUSADO'].includes(juego?.estado);
-}
-
 function getJuegosImpresion(produccion) {
   return asArray(produccion?.juegos_impresion);
 }
@@ -59,7 +55,9 @@ function usesPlateGames(tipoImpresion) {
 }
 
 function getCurrentJuego(juegos, userId) {
-  return asArray(juegos).find((juego) => isActiveJuego(juego) && sameId(juego.operador_id, userId)) || null;
+  const propios = asArray(juegos).filter((juego) => sameId(juego.operador_id, userId));
+  return propios.find((juego) => juego.estado === 'EN_PROCESO')
+    || propios.find((juego) => juego.estado === 'PAUSADO') || null;
 }
 
 function canUseJuego(juego, userId) {
@@ -103,8 +101,9 @@ function groupJuegosByPair(juegos) {
 
 function getPairStatus(pairJuegos, userId) {
   const juegos = asArray(pairJuegos);
-  if (juegos.some((juego) => isActiveJuego(juego) && sameId(juego.operador_id, userId))) return 'TRABAJO ACTUAL';
-  if (juegos.some((juego) => isActiveJuego(juego))) return 'EN PROCESO';
+  if (juegos.some((juego) => juego.estado === 'EN_PROCESO' && sameId(juego.operador_id, userId))) return 'TRABAJO ACTUAL';
+  if (juegos.some((juego) => juego.estado === 'EN_PROCESO')) return 'EN PROCESO';
+  if (juegos.some((juego) => juego.estado === 'PAUSADO')) return 'PAUSADO';
   if (juegos.length > 0 && juegos.every((juego) => juego.estado === 'TERMINADO')) return 'TERMINADO';
   if (juegos.some((juego) => juego.estado === 'BLOQUEADO')) return 'BLOQUEADO';
   if (juegos.some((juego) => juego.estado === 'PENDIENTE')) return 'DISPONIBLE';
@@ -316,8 +315,8 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
 
     const trabajosActuales = baseRows.filter((row) => (
       row.isJuegosImpresion
-        ? Boolean(getCurrentJuego(row.juegos, user?.id))
-        : isActiveProcess(row.proceso) && sameId(row.proceso.operador_id, user?.id)
+        ? asArray(row.juegos).some((juego) => juego.estado === 'EN_PROCESO' && sameId(juego.operador_id, user?.id))
+        : row.proceso.estado === 'EN_PROCESO' && sameId(row.proceso.operador_id, user?.id)
     ));
     const tieneTrabajoActual = trabajosActuales.length > 0;
 
@@ -335,7 +334,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
         return {
           ...row,
           juegoActual,
-          isTrabajoActual: Boolean(juegoActual),
+          isTrabajoActual: juegoActual?.estado === 'EN_PROCESO',
           controladoPorOtroOperador,
           bloqueadoPorTrabajoActual,
           isLocked: controladoPorOtroOperador || bloqueadoPorTrabajoActual,
@@ -637,7 +636,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const lockText = row.controladoPorOtroOperador
       ? 'En uso por otro operador.'
       : row.bloqueadoPorTrabajoActual
-        ? 'Bloqueada hasta finalizar el trabajo actual.'
+        ? 'Pausa o finaliza el trabajo en ejecucion para continuar.'
         : '';
 
     return (
@@ -755,12 +754,26 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     const isAcabados = getProcessArea(proceso) === 'ACABADOS';
     const isJuegosImpresion = Boolean(row.isJuegosImpresion);
     const juegos = asArray(row.juegos);
-    const juegoActual = getCurrentJuego(juegos, user?.id);
+    const juegoAsignado = getCurrentJuego(juegos, user?.id);
+    const juegoEnEjecucion = juegoAsignado?.estado === 'EN_PROCESO' ? juegoAsignado : null;
+    const previewOnly = Boolean(row.previewOnly);
+    const pairGroups = isJuegosImpresion ? groupJuegosByPair(juegos) : [];
+    const currentPairKey = juegoEnEjecucion?.grupo_par ? String(juegoEnEjecucion.grupo_par) : null;
+    const selectablePairGroups = pairGroups.filter((pair) => (
+      previewOnly || getCurrentJuego(pair.juegos, user?.id)
+      || pair.juegos.some((juego) => canUseJuego(juego, user?.id))
+    ));
+    const hasSelectedPairAvailable = selectablePairGroups.some((pair) => (
+      String(pair.grupo) === String(selectedPlatePair)
+    ));
+    const selectedPairKey = currentPairKey || (hasSelectedPairAvailable
+      ? selectedPlatePair : juegoAsignado?.grupo_par ? String(juegoAsignado.grupo_par) : '');
+    const selectedPair = pairGroups.find((pair) => String(pair.grupo) === String(selectedPairKey));
+    const juegoActual = getCurrentJuego(selectedPair?.juegos, user?.id);
     const rowEstado = getRowEstado(row);
     const acabadosRuta = getProcesosByArea(procesos, 'ACABADOS');
     const impresionProceso = getImpresionProceso(procesos);
     const isBusy = Boolean(actionLoading) || resumeSyncing;
-    const previewOnly = Boolean(row.previewOnly);
     const incidenciasAbiertasProceso = incidenciasOrden.filter((incidencia) => (
       incidencia.proceso_id === proceso.id && incidencia.estado !== 'RESUELTA'
     ));
@@ -774,21 +787,6 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
     );
     const necesitaCantidades = requiereCantidadesCierre(proceso);
     const cantidadPlanificada = Number(produccion.cantidad || 0) + Number(produccion.demasia || 0);
-    const pairGroups = isJuegosImpresion ? groupJuegosByPair(juegos) : [];
-    const currentPairKey = juegoActual?.grupo_par ? String(juegoActual.grupo_par) : null;
-    const selectablePairGroups = pairGroups.filter((pair) => {
-      if (previewOnly) return true;
-      const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
-      const pairHasAvailable = pair.juegos.some((juego) => (
-        canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO'
-      ));
-      return pairHasCurrent || pairHasAvailable;
-    });
-    const hasSelectedPairAvailable = selectablePairGroups.some((pair) => (
-      String(pair.grupo) === String(selectedPlatePair)
-    ));
-    const selectedPairKey = currentPairKey || (hasSelectedPairAvailable ? selectedPlatePair : '');
-    const selectedPair = pairGroups.find((pair) => String(pair.grupo) === String(selectedPairKey));
 
     const finalizarProceso = (targetJuego = null) => {
       const juegoParaCerrar = targetJuego
@@ -957,8 +955,8 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                       const pairStatus = getPairStatus(pair.juegos, user?.id);
                       const pairHasCurrent = pair.juegos.some((juego) => juegoActual?.id === juego.id);
                       const pairHasAvailable = pair.juegos.some((juego) => canUseJuego(juego, user?.id) && juego.estado !== 'TERMINADO');
-                      const displayStatus = pairHasCurrent
-                        ? 'TRABAJO ACTUAL'
+                      const displayStatus = pairHasCurrent || pairStatus === 'PAUSADO'
+                        ? pairStatus
                         : pairHasAvailable
                           ? 'DISPONIBLE'
                           : pairStatus;
@@ -1002,7 +1000,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                               </div>
                               <div className="operator-plate-actions">
                                 <Badge tone={getStatusTone(juego.estado)}>{formatStatus(juego.estado)}</Badge>
-                                {!previewOnly && !juegoActual && juego.estado !== 'TERMINADO' && (
+                                {!previewOnly && !juegoEnEjecucion && canUseJuego(juego, user?.id) && (
                                   <Button
                                     size="sm"
                                     variant="primary"
@@ -1010,6 +1008,17 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
                                     disabled={isBusy || !canStartJuego}
                                   >
                                     Iniciar
+                                  </Button>
+                                )}
+                                {!previewOnly && !isCurrentJuego && juego.estado === 'PAUSADO'
+                                  && sameId(juego.operador_id, user?.id) && (
+                                  <Button
+                                    size="sm"
+                                    variant="primary"
+                                    onClick={() => handleJuegoAction(juego.id, 'reanudar')}
+                                    disabled={isBusy || actionsLocked || Boolean(juegoEnEjecucion)}
+                                  >
+                                    Reanudar
                                   </Button>
                                 )}
                               </div>
@@ -1078,7 +1087,7 @@ export default function Pizarra({ ordenes = [], area, user, recargar, catalogs =
 
             {row.bloqueadoPorTrabajoActual && (
               <div className="alert alert-warning">
-                Finaliza o continua tu trabajo actual antes de iniciar otra orden de produccion.
+                Pausa o finaliza tu trabajo en ejecucion antes de iniciar o reanudar otro.
               </div>
             )}
 
